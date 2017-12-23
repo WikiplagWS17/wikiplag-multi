@@ -12,9 +12,9 @@ Wikiplag includes the following suprojects:
 Each of the projects has a separate README file with more details in its root directory.
 
 The dependencies of the projects are as follows:
-W -> {U}
-P -> {U}
-U -> {}
-R -> {U,P}
+- W -> {U}
+- P -> {U}
+- U -> {}
+- R -> {U,P}
 
 where the "->" arrow denotes the depends on relationship.
