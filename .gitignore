@@ -1,0 +1,8 @@
+*.class
+*.log
+
+#IDEA project dir
+.idea
+
+#SBT binary directories
+target
