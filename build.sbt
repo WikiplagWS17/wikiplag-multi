@@ -16,7 +16,7 @@
 
 //common settings such as name, version, scala version etc.
 lazy val commonSettings = Seq(
-  organization := "de.htwberlin.f4.Wikiplag",
+  organization := "de.htwberlin.f4.wikiplag",
   version := "0.1.0",
   scalaVersion := "2.11.8"
 )
