@@ -97,10 +97,8 @@ lazy val wikipediaImporter = (project in file("wikipediaImporter"))
     ),
     //configuration for the sbt-assembly plugin
     assemblyJarName in assembly := "wiki_importer_indexer.jar",
-    mainClass in assembly := Some("de.htw.ai.Wiki_Importer.SparkApp"),
-
-    //TODO later remove analyser when done refactoring
-  ).dependsOn(utils, plagiarismFinder)
+    mainClass in assembly := Some("de.htw.ai.Wiki_Importer.SparkApp")
+  ).dependsOn(utils)
 
 
 /* ************************************************************************* *\

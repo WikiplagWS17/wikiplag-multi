@@ -39,7 +39,7 @@ object InverseIndexBuilderImpl {
     * Removes stop words, builds n-grams and builds the inverse index for a certain document from the n-grams.
     *
     * There will be no normalization or stemming applied. You may use
-    * [[InverseIndexBuilderImpl#buildIndexKeys]] beforehand to achieve this.
+    * [[InverseIndexBuilderImpl.tokenizeAndNormalize]] beforehand to achieve this.
     *
     * @param n      the n used for the n-grams
     * @param doc_id The document's identifier.
