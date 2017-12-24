@@ -6,10 +6,8 @@ import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.SQLContext
 import com.datastax.spark.connector._
-import de.htw.ai.wikiplag.plagiarism.PlagiarismFinder
-import de.htw.ai.wikiplag.utils.InverseIndexBuilderImpl
 import de.htwberlin.f4.wikiplag.plagiarism.{HyperParameters, PlagiarismFinder}
-import de.htwberlin.f4.wikiplag.utils.InverseIndexBuilderImpl
+import de.htwberlin.f4.wikiplag.utils.{InverseIndexBuilderImpl, SparkConfHelper}
 import de.htwberlin.f4.wikiplag.utils.parser.WikiDumpParser
 import org.apache.commons.cli._
 
@@ -28,6 +26,37 @@ import org.apache.commons.cli._
  */
 //TODO adjust docs
 object SparkApp {
+
+  def main(args: Array[String]) {
+    val options = createCLiOptions()
+    val n = 4
+
+    try {
+      val commandLine = new GnuParser().parse(options, args)
+      val dbHost = commandLine.getParsedOptionValue("db_host").asInstanceOf[String]
+      val dbPort = commandLine.getParsedOptionValue("db_port").asInstanceOf[Number].intValue()
+      val dbUser = commandLine.getParsedOptionValue("db_user").asInstanceOf[String]
+      val dbPass = commandLine.getParsedOptionValue("db_password").asInstanceOf[String]
+      val dbName = commandLine.getParsedOptionValue("db_name").asInstanceOf[String]
+      val dbWTab = commandLine.getParsedOptionValue("db_wtable").asInstanceOf[String]
+      val dbITab = commandLine.getParsedOptionValue("db_itable").asInstanceOf[String]
+      if (commandLine.hasOption("e")) {
+        val file = commandLine.getParsedOptionValue("e").asInstanceOf[String]
+        extractTextCassandra(file, dbHost, dbPort, dbUser, dbPass, dbName, dbWTab)
+      } else if (commandLine.hasOption("i")) {
+        createInverseIndexCass(dbHost, dbPort, dbUser, dbPass, dbName, dbWTab, dbITab, n)
+      } else if (commandLine.hasOption("bt")) {
+
+        testPlagiarismFinder(new PlagiarismFinder(dbHost, dbPort, dbUser, dbPass, dbName, dbWTab, dbITab))
+      }
+    } catch {
+      case e: ParseException =>
+        println("Unexpected ParseException: " + e.getMessage)
+      case e: Exception =>
+        e.printStackTrace()
+
+    }
+  }
 
   private def createCLiOptions() = {
     val options = new Options()
@@ -114,41 +143,6 @@ object SparkApp {
     options
   }
 
-  def main(args: Array[String]) {
-    val classPath = System.getProperty("java.class.path")
-
-    val runningInIde=classPath.contains("idea_rt.jar")
-
-    val options = createCLiOptions()
-    val n = 4
-
-    try {
-      val commandLine = new GnuParser().parse(options, args)
-      val dbHost = commandLine.getParsedOptionValue("db_host").asInstanceOf[String]
-      val dbPort = commandLine.getParsedOptionValue("db_port").asInstanceOf[Number].intValue()
-      val dbUser = commandLine.getParsedOptionValue("db_user").asInstanceOf[String]
-      val dbPass = commandLine.getParsedOptionValue("db_password").asInstanceOf[String]
-      val dbName = commandLine.getParsedOptionValue("db_name").asInstanceOf[String]
-      val dbWTab = commandLine.getParsedOptionValue("db_wtable").asInstanceOf[String]
-      val dbITab = commandLine.getParsedOptionValue("db_itable").asInstanceOf[String]
-      if (commandLine.hasOption("e")) {
-        val file = commandLine.getParsedOptionValue("e").asInstanceOf[String]
-        extractTextCassandra(file, dbHost, dbPort, dbUser, dbPass, dbName, dbWTab)
-      } else if (commandLine.hasOption("i")) {
-        createInverseIndexCass(dbHost, dbPort, dbUser, dbPass, dbName, dbWTab, dbITab, n)
-      } else if (commandLine.hasOption("bt")) {
-
-        testPlagiarismFinder(new PlagiarismFinder(dbHost, dbPort, dbUser, dbPass, dbName, dbWTab, dbITab))
-      }
-    } catch {
-      case e: ParseException =>
-        println("Unexpected ParseException: " + e.getMessage)
-      case e: Exception =>
-        e.printStackTrace()
-
-    }
-  }
-
   def testPlagiarismFinder(finder: PlagiarismFinder) = {
     val input = raw"Korpiklaani (finn. „Klan der Wildnis“, auch „Klan des Waldes“) ist eine finnische Folk-Metal-Band aus Lahti mit starken Einflüssen aus der traditionellen Volksmusik. Die Texte der Band handeln von mythologischen Themen sowie der Natur und dem Feiern, wobei auch reine Instrumentalstücke in ihrem Repertoire enthalten sind. Sie selbst sehen ihre Musik auch vom Humppa beeinflusst. Bislang wurden sechs reguläre Studioalben und eine EP veröffentlicht, daneben eine Live-DVD, sowie eine Wiederveröffentlichung der Demos."
     val input2 = raw"Der Kragenbär, Asiatische Schwarzbär, Mondbär oder Tibetbär (Ursus thibetanus) ist eine Raubtierart aus der Familie der Bären (Ursidae). In seiner Heimat wird er meistens als black bear bezeichnet oder als Baribal. Im Vergleich zum eher gefürchteten Grizzlybär gilt der Schwarzbär als weniger gefährlich."
@@ -184,11 +178,8 @@ object SparkApp {
   private def extractTextCassandra(hadoopFile: String, cassandraHost: String, cassandraPort: Int, cassandraUser: String, cassandraPW: String, cassandraKeyspace: String, cassandraTables: String) {
     println("Import Wiki-Articles Cassandra")
     println("Starting Import")
-    val sparkConf = new SparkConf(true).setAppName("WikiImporter_Cassandra")
-      .set("spark.cassandra.connection.host", cassandraHost)
-      .set("spark.cassandra.connection.port", cassandraPort.toString())
-      .set("spark.cassandra.auth.username", cassandraUser)
-      .set("spark.cassandra.auth.password", cassandraPW)
+    var appName = "WikiImporter_Cassandra"
+    val sparkConf = SparkConfHelper.createCassandraSparkConf(appName, cassandraUser, cassandraPW, cassandraHost, cassandraPort.toString)
 
     val sc = new SparkContext(sparkConf)
     val sqlContext = new SQLContext(sc)
@@ -221,12 +212,9 @@ object SparkApp {
    */
   private def createInverseIndexCass(cassandraHost: String, cassandraPort: Int, cassandraUser: String, cassandraPW: String, cassandraKeyspace: String, cassandraWikiTables: String, cassandraInvIndexTables: String, n: Int) {
     println("Creating InverseIndex for Cassandra")
+    var appName = "[WIKIPLAG] Build Inverse Index WikipediaDE"
+    val sparkConf = SparkConfHelper.createCassandraSparkConf(appName, cassandraUser, cassandraPW, cassandraHost, cassandraPort.toString)
 
-    val sparkConf = new SparkConf(true).setAppName("[WIKIPLAG] Build Inverse Index WikipediaDE")
-      .set("spark.cassandra.connection.host", cassandraHost)
-      .set("spark.cassandra.connection.port", cassandraPort.toString())
-      .set("spark.cassandra.auth.username", cassandraUser)
-      .set("spark.cassandra.auth.password", cassandraPW)
     val sc = new SparkContext(sparkConf)
 
     val rdd = sc.cassandraTable(cassandraKeyspace, cassandraWikiTables)

@@ -1,8 +1,8 @@
 package de.htwberlin.f4.wikiplag.utils.database
 
-import InverseIndexTable.NGram
-import InverseIndexTable.DocId
-import InverseIndexTable.Occurences
+import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable.NGram
+import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable.DocId
+import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable.Occurences
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.datastax.spark.connector.types.{TextType, TupleFieldDef, TupleType}

@@ -1,9 +1,9 @@
 package de.htwberlin.f4.wikiplag.plagiarism
 
 import com.datastax.spark.connector.CassandraRow
-import de.htw.ai.wikiplag.utils.database.{CassandraClient, InverseIndexTable}
 import de.htwberlin.f4.wikiplag.utils.InverseIndexBuilderImpl
-import de.htwberlin.f4.wikiplag.utils.database.{CassandraClient, InverseIndexTable}
+import de.htwberlin.f4.wikiplag.utils.database.CassandraClient
+import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.mutable
