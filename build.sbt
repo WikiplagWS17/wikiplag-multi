@@ -73,6 +73,7 @@ lazy val plagiarismFinder = (project in file("plagiarismFinder"))
     name := "WikiPlagAnalyser",
     libraryDependencies ++= testDependencies,
     libraryDependencies ++= sparkDependencies,
+    libraryDependencies++=sparkSQLDependencies,
     libraryDependencies ++= Seq(
       //add other dependencies for the analyser project here
     )
