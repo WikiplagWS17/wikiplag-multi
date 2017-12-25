@@ -6,8 +6,8 @@ import org.scalatest.junit.AssertionsForJUnit
 class InverseIndexBuilderImplTest extends AssertionsForJUnit {
   var n: Int = 4
   var document: List[String] = _
-  var result: Map[Long, (Long, List[Int])] = _
-  var docId: Long = _
+  var result: Map[Long, (Int, List[Int])] = _
+  var docId: Int= _
 
   @Before def init() {
     docId = 13

@@ -5,10 +5,24 @@ import scala.util.hashing.Hashing
 /**
   * The Hash function used by the inverse index builder.
   */
-object InverseIndexHashing extends Hashing[List[String]] {
+object InverseIndexHashing  {
 
-  override def hash(xs: List[String]): Int = {
-   //we just use the default implementation but it is to be changed some day it will be easy to do so
-    xs.hashCode()
+  def hash(xs: List[String]): Long = {
+   var h:Long = 0
+
+    if (xs.nonEmpty) {
+      xs.foreach(x => h=h * 31 + hashCode(x))
+    }
+    h
+  }
+
+  def hashCode(s: String):Long= {
+    var value = s.getBytes()
+    var h:Long = 0
+
+    if (value.length > 0) {
+      value.foreach(x => h=h * 31 + x)
+    }
+    h
   }
 }

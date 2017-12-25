@@ -199,7 +199,7 @@ class PlagiarismFinder(cassandraHost: String, cassandraPort: Int, cassandraUser:
 
         val docId = row.getLong(InverseIndexTable.DocId)
         val ngram = row.getTupleValue(InverseIndexTable.NGram).values.map(value => value.asInstanceOf[String]).toList
-        val occurences = row.get[List[Int]](InverseIndexTable.Occurences)
+        val occurences = row.get[List[Int]](InverseIndexTable.Occurrences)
 
         var ngramsList = accumulator.getOrElse(docId, new mutable.MutableList[(List[String], Int)])
         occurences.foreach(occurence => ngramsList.+=((ngram, occurence)))

@@ -42,22 +42,22 @@ object InverseIndexBuilderImpl {
     * [[InverseIndexBuilderImpl.tokenizeAndNormalize]] beforehand to achieve this.
     *
     * @param n      the n used for the n-grams
-    * @param doc_id The document's identifier.
+    * @param docId The document's identifier.
     * @param tokens The parsed and normalized words of the document.
     * @return The inverse index for the passed document (a map of n-gram hashes to document and occurrences tuples
     *
     */
-  def buildInverseIndexNGramHashes(n: Int, doc_id: Long,
-                                   tokens: List[String]): Map[Long, (Long, List[Int])] = {
+  def buildInverseIndexNGramHashes(n: Int, docId: Int,
+                                   tokens: List[String]): Map[Long, (Int, List[Int])] = {
 
     //we use a queue since all operations that we use are constant time on queues
     //http://docs.scala-lang.org/overviews/collections/performance-characteristics.html
 
     //we have to use -n+1 as our starting index because of the way our n-gram building method works.
-    tokens.foldLeft(Map.empty[Long, (Long, List[Int])], mutable.Queue.empty[String], -n+1) {
+    tokens.foldLeft(Map.empty[Long, (Int, List[Int])], mutable.Queue.empty[String], -n+1) {
 
       (accumulator, current) => {
-        var resultNGramsToOccurencesMap = accumulator._1
+        var resultNGramsToOccurrencesMap = accumulator._1
         val nNgramBuffer = accumulator._2
         val currentPosition = accumulator._3
 
@@ -73,16 +73,16 @@ object InverseIndexBuilderImpl {
           nNgramBuffer.dequeue()
 
           //get the occurrences of the given n-gram. If not present return an empty lst
-          val occurrencesList = resultNGramsToOccurencesMap.getOrElse(ngramHash, (doc_id, List.empty[Int]))._2
+          val occurrencesList = resultNGramsToOccurrencesMap.getOrElse(ngramHash, (docId, List.empty[Int]))._2
 
           //add the new one to the list
           val newOccurrencesList = occurrencesList :+ currentPosition
 
           //update the change in the map
-          resultNGramsToOccurencesMap = resultNGramsToOccurencesMap.updated(ngramHash, (doc_id, newOccurrencesList))
+          resultNGramsToOccurrencesMap = resultNGramsToOccurrencesMap.updated(ngramHash, (docId, newOccurrencesList))
         }
 
-        (resultNGramsToOccurencesMap, nNgramBuffer, currentPosition + 1)
+        (resultNGramsToOccurrencesMap, nNgramBuffer, currentPosition + 1)
       }
     }._1
   }

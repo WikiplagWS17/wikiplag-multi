@@ -23,8 +23,10 @@ class CassandraParameters(val articlesTable: String, val inverseIndexTable: Stri
       .set("spark.cassandra.auth.password", cassandraPW)
 
     //specify master explicitly to local if started within the ide
-    if (Properties.runningFromIDE())
+    if (Properties.runningFromIDE()) {
+      print("running from IDE. Setting master to \"local\"")
       conf.setMaster("local")
+    }
     conf
   }
 

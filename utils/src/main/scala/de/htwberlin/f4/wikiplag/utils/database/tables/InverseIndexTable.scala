@@ -6,5 +6,5 @@ package de.htwberlin.f4.wikiplag.utils.database.tables
 object InverseIndexTable {
   val DocId="docid"
   val NGram="ngram_hash"
-  val Occurences="occurences"
+  val Occurrences="occurrences"
 }

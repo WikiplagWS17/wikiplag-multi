@@ -2,7 +2,7 @@ package de.htwberlin.f4.wikiplag.utils.database
 
 import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable.NGram
 import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable.DocId
-import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable.Occurences
+import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable.Occurrences
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.datastax.spark.connector.types.{TextType, TupleFieldDef, TupleType}
@@ -34,7 +34,7 @@ class CassandraClient(sc: SparkContext, keyspace: String, inverseIndexTable: Str
     val df = sc.cassandraTable(keyspace, inverseIndexTable)
 
     val ngramsAsCassandraTuplesList = ngrams.map(ngram => tupleType4.newInstance(ngram.headOption, ngram.lift(1), ngram.lift(2), ngram.lift(3)))
-    val result = df.select(NGram, DocId, Occurences).where(NGram + " in ?", ngramsAsCassandraTuplesList)
+    val result = df.select(NGram, DocId, Occurrences).where(NGram + " in ?", ngramsAsCassandraTuplesList)
     result
   }
 

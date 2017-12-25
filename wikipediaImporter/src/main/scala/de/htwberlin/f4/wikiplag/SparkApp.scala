@@ -64,7 +64,7 @@ object SparkApp {
 
     df.filter("ns = 0")
       .select("id", "title", "revision.text")
-      .rdd.map(X => (X.getLong(0), X.getString(1), WikiDumpParser.parseXMLWikiPage(X.getStruct(2).getString(0))))
+      .rdd.map(X => (X.getLong(0).toInt, X.getString(1), WikiDumpParser.parseXMLWikiPage(X.getStruct(2).getString(0))))
       .saveToCassandra(cassandraParameters.keyspace, cassandraParameters.articlesTable, SomeColumns(ArticlesTable.DocId, ArticlesTable.Title, ArticlesTable.WikiText))
     println("Import Complete")
     sc.stop()
@@ -90,7 +90,7 @@ object SparkApp {
     val rdd = sc.cassandraTable(cassandraParameters.keyspace, cassandraParameters.articlesTable)
 
     //tokenize and normalize the text of each article
-    val documents = rdd.map(x => (x.get[Long](ArticlesTable.DocId), InverseIndexBuilderImpl.tokenizeAndNormalize(x.get[String](ArticlesTable.WikiText))))
+    val documents = rdd.map(x => (x.get[Int](ArticlesTable.DocId), InverseIndexBuilderImpl.tokenizeAndNormalize(x.get[String](ArticlesTable.WikiText))))
 
     //save it to the cassandra table
     documents.saveToCassandra(cassandraParameters.keyspace, cassandraParameters.tokenizedTable, SomeColumns(TokenizedTable.DocId, TokenizedTable.Tokens))
@@ -119,7 +119,7 @@ object SparkApp {
 
     val rdd = sc.cassandraTable(cassandraParameters.keyspace, cassandraParameters.tokenizedTable)
     //get the tokenize and normalized text from the database
-    val documents = rdd.map(x => (x.get[Long](TokenizedTable.DocId), x.get[List[String]](TokenizedTable.Tokens)))
+    val documents = rdd.map(x => (x.get[Int](TokenizedTable.DocId), x.get[List[String]](TokenizedTable.Tokens)))
 
     //build the inverse index
     val invIndexEntries = documents.map(entry => InverseIndexBuilderImpl.buildInverseIndexNGramHashes(n, entry._1, entry._2))
@@ -127,7 +127,7 @@ object SparkApp {
     //n-gram hash, docId, occurrences
     val merge = invIndexEntries.flatMap(identity).map(x => (x._1, x._2._1, x._2._2))
     merge.saveToCassandra(cassandraParameters.keyspace, cassandraParameters.inverseIndexTable,
-      SomeColumns(InverseIndexTable.NGram, InverseIndexTable.DocId, InverseIndexTable.Occurences))
+      SomeColumns(InverseIndexTable.NGram, InverseIndexTable.DocId, InverseIndexTable.Occurrences))
     sc.stop()
     println("Import Complete")
   }
