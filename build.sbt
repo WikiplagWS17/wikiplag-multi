@@ -73,6 +73,7 @@ lazy val plagiarismFinder = (project in file("plagiarismFinder"))
     name := "WikiPlagAnalyser",
     libraryDependencies ++= testDependencies,
     libraryDependencies ++= sparkDependencies,
+    libraryDependencies++=sparkSQLDependencies,
     libraryDependencies ++= Seq(
       //add other dependencies for the analyser project here
     )
@@ -96,11 +97,9 @@ lazy val wikipediaImporter = (project in file("wikipediaImporter"))
       //add other dependencies for the importer project here
     ),
     //configuration for the sbt-assembly plugin
-    assemblyJarName in assembly := "wiki_importer_indexer.jar",
-    mainClass in assembly := Some("de.htw.ai.Wiki_Importer.SparkApp"),
-
-    //TODO later remove analyser when done refactoring
-  ).dependsOn(utils, plagiarismFinder)
+    assemblyJarName in assembly := "wiki_importer.jar",
+    mainClass in assembly := Some("de.htwberlin.f4.wikiplag.SparkApp")
+  ).dependsOn(utils)
 
 
 /* ************************************************************************* *\
