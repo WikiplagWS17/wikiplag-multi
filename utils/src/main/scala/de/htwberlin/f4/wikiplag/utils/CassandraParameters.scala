@@ -28,5 +28,6 @@ class CassandraParameters(val articlesTable: String, val inverseIndexTable: Stri
     conf
   }
 
-  override def toString = s"CassandraParameters($articlesTable, $inverseIndexTable, $tokenizedTable, $keyspace, $cassandraUser, $cassandraPW, $cassandraHost, $cassandraPort)"
+  override def toString = s"CassandraParameters($articlesTable, $inverseIndexTable, $tokenizedTable, $keyspace," +
+    s" $cassandraUser, $cassandraPW, $cassandraHost, $cassandraPort)"
 }

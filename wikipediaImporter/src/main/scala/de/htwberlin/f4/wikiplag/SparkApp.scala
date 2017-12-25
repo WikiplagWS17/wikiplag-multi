@@ -98,7 +98,18 @@ object SparkApp {
     println("Tokenizing done.")
   }
 
-  //TODO docs
+  /**
+    * Creates the inverse index of the aldready tokenized wikitext.
+    *
+    * Note:
+    * If the given cassandra table doesn't exist it will try to create it by sampling its structure from the
+    * dataframe. This isn't optimal in cassandra, tables should ALWAYS be created beforehand to ensure efficient reads.
+    *
+    * @param n                   the n for the n-grams
+    * @param cassandraParameters The cassandra parameters
+    *
+    *
+    */
   private def createInverseIndexAndStoreInCassandra(n: Int, cassandraParameters: CassandraParameters) {
     println("Creating inverse index for Cassandra")
     var appName = "[WIKIPLAG] Build inverse index WikipediaDE"
@@ -111,13 +122,10 @@ object SparkApp {
     val documents = rdd.map(x => (x.get[Long](TokenizedTable.DocId), x.get[List[String]](TokenizedTable.Tokens)))
 
     //build the inverse index
-    val invIndexEntries = documents.map(entry => InverseIndexBuilderImpl.buildInverseIndexNGram(n, entry._1, entry._2))
+    val invIndexEntries = documents.map(entry => InverseIndexBuilderImpl.buildInverseIndexNGramHashes(n, entry._1, entry._2))
 
-    //n-gram, docId,occurences
-    //TODO remove hardcoded tuple stuff
-    //TODO Some makes tuples
-    val merge = invIndexEntries.flatMap(identity).map(x => (Tuple4(x._1.lift(0), x._1.lift(1), x._1.lift(2), x._1.lift(3)), x._2._1, x._2._2))
-
+    //n-gram hash, docId, occurrences
+    val merge = invIndexEntries.flatMap(identity).map(x => (x._1, x._2._1, x._2._2))
     merge.saveToCassandra(cassandraParameters.keyspace, cassandraParameters.inverseIndexTable,
       SomeColumns(InverseIndexTable.NGram, InverseIndexTable.DocId, InverseIndexTable.Occurences))
     sc.stop()

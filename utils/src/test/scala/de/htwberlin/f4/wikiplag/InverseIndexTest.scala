@@ -34,7 +34,7 @@ class InverseIndexTest extends FunSuite {
     val temsInDocument1 = List("Ä", "Ü", "Ö", "Ελλάδα", "Elláda","und", "Ä","und", "Ü", "Ö", "Ελλάδα", "Elláda")
 
     new TestObject {
-      val map_e1: Map[List[String], (Long, List[Int])] = testObject.buildInverseIndexNGram(1,doc_id, temsInDocument1)
+      val map_e1: Map[List[String], (Long, List[Int])] = testObject.buildInverseIndexNGramHashes(1,doc_id, temsInDocument1)
 
       assert(map_e1.size == 5)
       assert(map_e1(List("Ä"))._1 == doc_id)
