@@ -53,8 +53,7 @@ object InverseIndexBuilderImpl {
     //we use a queue since all operations that we use are constant time on queues
     //http://docs.scala-lang.org/overviews/collections/performance-characteristics.html
 
-    //we have to use -n+1 as our starting index because of the way our n-gram building method works.
-    tokens.foldLeft(Map.empty[Long, (Int, List[Int])], mutable.Queue.empty[String], -n+1) {
+    tokens.foldLeft(Map.empty[Long, (Int, List[Int])], mutable.Queue.empty[(String,Int)], 0) {
 
       (accumulator, current) => {
         var resultNGramsToOccurrencesMap = accumulator._1
@@ -63,20 +62,20 @@ object InverseIndexBuilderImpl {
 
         //if the current word s not a stop word add it to the n-gram buffer
         if (!stopWords.contains(current))
-          nNgramBuffer.enqueue(current)
+          nNgramBuffer.enqueue((current,currentPosition))
 
         //the are enough values to build an n-gram, let's do it!
         if (nNgramBuffer.size == n) {
-          val ngram = nNgramBuffer.toList
+          val ngram = nNgramBuffer.map(x=>x._1).toList
           val ngramHash = InverseIndexHashing.hash(ngram)
-          //remove the "key" (the first word) of the n-gram from the list
-          nNgramBuffer.dequeue()
+          //remove the "key" (the first word) of the n-gram from the list and note it's position
+          val hashPosition=nNgramBuffer.dequeue()._2
 
           //get the occurrences of the given n-gram. If not present return an empty lst
           val occurrencesList = resultNGramsToOccurrencesMap.getOrElse(ngramHash, (docId, List.empty[Int]))._2
 
           //add the new one to the list
-          val newOccurrencesList = occurrencesList :+ currentPosition
+          val newOccurrencesList = occurrencesList :+ hashPosition
 
           //update the change in the map
           resultNGramsToOccurrencesMap = resultNGramsToOccurrencesMap.updated(ngramHash, (docId, newOccurrencesList))
