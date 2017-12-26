@@ -5,43 +5,34 @@ import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable.DocId
 import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable.Occurrences
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
-import com.datastax.spark.connector.types.{TextType, TupleFieldDef, TupleType}
+import de.htwberlin.f4.wikiplag.utils.CassandraParameters
 import org.apache.spark.SparkContext
 
 /**
-  * @author
-  * Anton K.
-  *
-  * 09.12.2017
-  *
-  * A Cassandra Client for 4-Tuples
-  * For more info about accessing cassandra tuples using the connector - https://docs.datastax.com/en/developer/java-driver/3.3/manual/tuples/
+  * Client for accessing the Cassandra database.
   */
-class CassandraClient(sc: SparkContext, keyspace: String, inverseIndexTable: String, articlesTable: String) {
-
-  //the cassandra tuple type. It must be the same as the one in the database
-  val tupleType4 = new TupleType(TupleFieldDef(0, TextType), TupleFieldDef(1, TextType), TupleFieldDef(2, TextType), TupleFieldDef(3, TextType))
+class CassandraClient(sc: SparkContext, cassandraParameters: CassandraParameters) {
 
   /**
-    * Retrieves all the 4-grams from the database using a single where in statement.
-    *
-    * @param ngrams The n-grams to look for
-    * @return a cassandra rdd with the results
-    */
-  def query4Grams(ngrams: List[List[String]]): CassandraTableScanRDD[CassandraRow] = {
-    if (ngrams == null || ngrams.isEmpty)
-      throw new IllegalArgumentException("ngrams")
-    val df = sc.cassandraTable(keyspace, inverseIndexTable)
-
-    val ngramsAsCassandraTuplesList = ngrams.map(ngram => tupleType4.newInstance(ngram.headOption, ngram.lift(1), ngram.lift(2), ngram.lift(3)))
-    val result = df.select(NGram, DocId, Occurrences).where(NGram + " in ?", ngramsAsCassandraTuplesList)
-    result
+    * Same as [[CassandraClient.queryNGramHashes]] but returns an array of cassandra rows instead.
+    **/
+  def queryNGramHashesAsArray(ngramHashes: List[Long]): Array[CassandraRow] = {
+    queryNGramHashes(ngramHashes).collect()
   }
 
   /**
-    * Same as [[CassandraClient.query4Grams]] but returns an array of cassandra rows instead.
-    **/
-  def query4GramsAsArray(ngrams: List[List[String]]): Array[CassandraRow] = {
-    query4Grams(ngrams).collect()
+    * Retrieves all the n-gram hashes from the database using a single where in statement.
+    *
+    * @param ngramhashes The n-grams to look for
+    * @return a cassandra rdd with the results
+    */
+  def queryNGramHashes(ngramhashes: List[Long]): CassandraTableScanRDD[CassandraRow] = {
+    if (ngramhashes == null || ngramhashes.isEmpty)
+      throw new IllegalArgumentException("ngrams")
+    val df = sc.cassandraTable(cassandraParameters.keyspace, cassandraParameters.inverseIndexTable)
+
+    //val ngramsAsCassandraTuplesList = ngramhashes.map(ngram => )))
+    val result = df.select(NGram, DocId, Occurrences).where(NGram + " in ?", ngramhashes)
+    result
   }
 }

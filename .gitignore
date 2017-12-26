@@ -6,3 +6,7 @@
 
 #SBT binary directories
 target
+
+
+#Ignore config files. They contain credentials and should never be pushed to git. For each config file there is a .conf-sample file
+*.conf
