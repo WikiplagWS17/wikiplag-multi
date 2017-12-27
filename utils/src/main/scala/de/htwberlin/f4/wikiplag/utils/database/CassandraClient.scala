@@ -6,6 +6,7 @@ import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable.Occurren
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import de.htwberlin.f4.wikiplag.utils.CassandraParameters
+import de.htwberlin.f4.wikiplag.utils.database.tables.TokenizedTable
 import org.apache.spark.SparkContext
 
 /**
@@ -28,11 +29,25 @@ class CassandraClient(sc: SparkContext, cassandraParameters: CassandraParameters
     */
   def queryNGramHashes(ngramhashes: List[Long]): CassandraTableScanRDD[CassandraRow] = {
     if (ngramhashes == null || ngramhashes.isEmpty)
-      throw new IllegalArgumentException("ngrams")
+      throw new IllegalArgumentException("ngramhashes")
     val df = sc.cassandraTable(cassandraParameters.keyspace, cassandraParameters.inverseIndexTable)
 
     //val ngramsAsCassandraTuplesList = ngramhashes.map(ngram => )))
     val result = df.select(NGram, DocId, Occurrences).where(NGram + " in ?", ngramhashes)
+    result
+  }
+
+  def queryDocIdsTokensAsMap(docIds: List[Int]): Map[Int, Vector[String]] = {
+    queryDocIdsTokens(docIds).map(x => (x.getInt(TokenizedTable.DocId), x.getList[String](TokenizedTable.Tokens))).collect().toMap
+  }
+
+  def queryDocIdsTokens(docIds: List[Int]): CassandraTableScanRDD[CassandraRow] = {
+    if (docIds == null || docIds.isEmpty)
+      throw new IllegalArgumentException("docIds")
+    val df = sc.cassandraTable(cassandraParameters.keyspace, cassandraParameters.tokenizedTable)
+
+    //val ngramsAsCassandraTuplesList = ngramhashes.map(ngram => )))
+    val result = df.select(TokenizedTable.DocId, TokenizedTable.Tokens).where(TokenizedTable.DocId + " in ?", docIds)
     result
   }
 }

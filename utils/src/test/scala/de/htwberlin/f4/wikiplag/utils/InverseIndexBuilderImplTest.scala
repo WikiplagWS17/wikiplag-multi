@@ -1,5 +1,6 @@
 package de.htwberlin.f4.wikiplag.utils
 
+import de.htwberlin.f4.wikiplag.utils.inverseindex.{InverseIndexBuilderImpl, InverseIndexHashing}
 import org.junit.{Before, Test}
 import org.scalatest.junit.AssertionsForJUnit
 

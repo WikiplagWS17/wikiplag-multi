@@ -1,4 +1,4 @@
-package de.htwberlin.f4.wikiplag.utils
+package de.htwberlin.f4.wikiplag.utils.inverseindex
 
 import java.util.Locale
 
@@ -14,26 +14,6 @@ import scala.collection.mutable
   *
   */
 object InverseIndexBuilderImpl {
-
-  var stopWords: Set[String] = _
-
-  {
-    loadStopWords()
-
-    /**
-      * Reads stop words from a file and stores them in the {@link InverseIndexBuilderImpl#stopWords} variable.
-      *
-      * @param stopWordsFile the file name.
-      *                      Stopwords taken from: https://solariz.de/de/deutsche_stopwords.htm
-      */
-    def loadStopWords(stopWordsFile: String = "stopwords.txt") = {
-      stopWords = Option(getClass.getClassLoader.getResourceAsStream(stopWordsFile))
-        .map(scala.io.Source.fromInputStream)
-        .map(_.getLines.toSet)
-        .getOrElse(scala.io.Source.fromFile(stopWordsFile).getLines.toSet)
-    }
-  }
-
 
   /**
     * Removes stop words, builds n-grams and builds the inverse index for a certain document from the n-grams.
@@ -61,7 +41,7 @@ object InverseIndexBuilderImpl {
         val currentPosition = accumulator._3
 
         //if the current word s not a stop word add it to the n-gram buffer
-        if (!stopWords.contains(current))
+        if (!StopWords.stopWords.contains(current))
           nNgramBuffer.enqueue((current,currentPosition))
 
         //the are enough values to build an n-gram, let's do it!
