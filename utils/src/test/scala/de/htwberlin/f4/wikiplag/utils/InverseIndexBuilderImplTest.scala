@@ -1,5 +1,6 @@
 package de.htwberlin.f4.wikiplag.utils
 
+import de.htwberlin.f4.wikiplag.utils.inverseindex.{InverseIndexBuilderImpl, InverseIndexHashing}
 import org.junit.{Before, Test}
 import org.scalatest.junit.AssertionsForJUnit
 
@@ -54,4 +55,14 @@ class InverseIndexBuilderImplTest extends AssertionsForJUnit {
       val ngramHash= InverseIndexHashing.hash(List("must", "answer","me","these"))
       assert(result(ngramHash)._2.size== 3)
     }
+
+  @Test def testBuildInverseHashPositionsCorrectBeforeStopword() {
+    val ngramHash = InverseIndexHashing.hash(List("me", "these", "questions", "three"))
+    assert(result(ngramHash)._2.head == 9)
+  }
+
+  @Test def testBuildInverseHashPositionsCorrectSplitByStopword() {
+    val ngramHash = InverseIndexHashing.hash(List("three","before", "must", "answer"))
+    assert(result(ngramHash)._2.head == 12)
+  }
 }

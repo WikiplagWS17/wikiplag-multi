@@ -4,7 +4,8 @@ import org.apache.spark.SparkContext
 import org.apache.spark.sql.SQLContext
 import com.datastax.spark.connector._
 import de.htwberlin.f4.wikiplag.utils.database.tables.{ArticlesTable, InverseIndexTable, TokenizedTable}
-import de.htwberlin.f4.wikiplag.utils.{CassandraParameters, InverseIndexBuilderImpl}
+import de.htwberlin.f4.wikiplag.utils.CassandraParameters
+import de.htwberlin.f4.wikiplag.utils.inverseindex.InverseIndexBuilderImpl
 import de.htwberlin.f4.wikiplag.utils.parser.WikiDumpParser
 
 /**

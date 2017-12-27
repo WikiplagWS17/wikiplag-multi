@@ -1,6 +1,4 @@
-package de.htwberlin.f4.wikiplag.utils
-
-import scala.util.hashing.Hashing
+package de.htwberlin.f4.wikiplag.utils.inverseindex
 
 /**
   * The Hash function used by the inverse index builder.

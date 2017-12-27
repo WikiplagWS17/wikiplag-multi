@@ -1,21 +1,41 @@
 package de.htwberlin.f4.wikiplag.plagiarism
 
 import com.datastax.spark.connector.CassandraRow
-import de.htwberlin.f4.wikiplag.utils.InverseIndexBuilderImpl
+import de.htwberlin.f4.wikiplag.utils.CassandraParameters
 import de.htwberlin.f4.wikiplag.utils.database.CassandraClient
 import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable
-import org.apache.spark.{SparkConf, SparkContext}
+import de.htwberlin.f4.wikiplag.utils.inverseindex.{InverseIndexBuilderImpl, InverseIndexHashing, StopWords}
+import org.apache.spark.SparkContext
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 /**
   * Represents one potential plagiarism
   *
-  * @param start the start of the plagiarism
-  * @param end   the end of the plagiarism
+  * @param positon the text position of the plagiarism
+  * @param docId   the docId id
   */
-class Match(val start: Long, val end: Long, val docId: Long) {
-  override def toString: String = s"[Start:\t $start \n End:\t $end \n"
+class Match(val positon: TextPosition, val docId: Int) {
+
+  override def toString = s"Match(positon=$positon, docId=$docId)"
+}
+
+/** Represents a position in a text
+  *
+  * @param start the start
+  * @param end   the end of the text position */
+class TextPosition(var start: Int, var end: Int) {
+  override def toString = s"TextPosition(start=$start, end=$end)"
+
+  /*start - end*/
+  def length(): Int = {
+    start - end
+  }
+
+  def +(other: TextPosition): TextPosition = {
+    new TextPosition(this.start, this.end + other.start)
+  }
 }
 
 /**
@@ -48,55 +68,75 @@ class HyperParameters(val minimumSentenceLength: Int = 6, val threshold: Float =
   * @author
   * Anton K.
   *
-  * 09.12.2017
+  * 27.12.2017
   *
-  * A class for finding determining if a given text is a wikipedia plagiarism.
+  * A class for determining if a given text has parts which are potential wikipedia plagiarisms.
   * @constructor Creates a new instance.
-  * @param cassandraHost the ip-address of the cassandra database host
-  * @param cassandraPort the port on which the database can be reached
-  * @param cassandraUser the username for the cassandra database
-  * @param cassandraPW   the password for the user
+  * @param cassandraParameters cassandra parameters
+  * @param sc                  the spark context
   **/
-//TODO cassandra keyspace, tables etc as a objects similar to InverseIndexTable but with fields for tableName and Keyspace
-class PlagiarismFinder(cassandraHost: String, cassandraPort: Int, cassandraUser: String, cassandraPW: String, keyspace: String, articlesTable: String, invIndexTable: String, n: Int = 4) {
-  val sparkConf = new SparkConf(true).setAppName("Database_Benchmark_Cassandra")
-    .set("spark.cassandra.connection.host", cassandraHost)
-    .set("spark.cassandra.connection.port", cassandraPort.toString)
-    .set("spark.cassandra.auth.username", cassandraUser)
-    .set("spark.cassandra.auth.password", cassandraPW).setMaster("local")
-  val sc = new SparkContext(sparkConf)
-  val cassandraClient = new CassandraClient(sc, keyspace, invIndexTable, articlesTable)
+class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameters, n: Int = 4) {
+
+  val cassandraClient: CassandraClient = new CassandraClient(sc, cassandraParameters)
+
+  /** */
+  def findPlagiarismsExtendedText(rawText: String, hyperParameters: HyperParameters): Map[TextPosition, List[String]] = {
+    var potentialPlagiarims = findPlagiarisms(rawText, hyperParameters)
+
+    val docIds = potentialPlagiarims.flatMap(x => x._2).map(x => x.docId).toList
+
+    val docIdsToDocsMap = cassandraClient.queryDocIdsTokensAsMap(docIds)
+
+    val result = potentialPlagiarims.map(textPlagiarismPair => textPlagiarismPair._1 ->
+      textPlagiarismPair._2.map(m => expandToIncludeStopWordsAsText(m, docIdsToDocsMap(m.docId), hyperParameters.maxDistanceBetweenNgrams)))
+
+    result
+  }
 
   /**
     * Returns potential plagiarism matches to the given raw text input.
     * The raw text is split into sentences and each sentence is queried separately.
+    * Because of the removed stop words the match position might be up to [[HyperParameters.maxDistanceBetweenNgrams]] bigger.
+    * Use the findPlagiarismsExtendedText Method to get those also.
     *
     * @param rawText         the raw, unprocessed text(user input)
     * @param hyperParameters the hyper parameters
-    * @return a map of word tokens to matches
+    * @return a map of positions in the original text to matches
     **/
   //TODO potential improvement- query database once instead of per sentence
-  //TODO return sentence position or sentence to matches
-  def findPlagiarisms(rawText: String, hyperParameters: HyperParameters): Map[List[String], List[Match]] = {
+  def findPlagiarisms(rawText: String, hyperParameters: HyperParameters): Map[TextPosition, List[Match]] = {
 
     //split into sentences
     val inputAsRawSentences = rawText.split("[.,!?]")
+
+
+    //get the positions
+    var positions = inputAsRawSentences.map(x => {
+      val start = rawText.indexOf(x)
+      //+1 because of the punctuation mark
+      new TextPosition(start, start + x.length + 1)
+    })
+    //remove the last punctuation mark if necessary
+    if (!".,!?".contains(rawText.last))
+      positions.last.end = positions.last.end - 1
 
     //split into tokens using the inverse index builder
     val sentencesTokenized = inputAsRawSentences.
       map(sentenceRawText => InverseIndexBuilderImpl.tokenizeAndNormalize(sentenceRawText))
 
-    //merge short sentences
-    val mergedSentences = mergeSentences(sentencesTokenized, hyperParameters.minimumSentenceLength)
+    //merge short sentences with positions
+    val mergedSentencesWithPositions = mergeSentences(sentencesTokenized.zip(positions), hyperParameters.minimumSentenceLength)
 
-    //build n-grams
-    val ngramsBySentence = mergedSentences.map(entry => entry.sliding(n).toList)
+    val mergedSentences = mergedSentencesWithPositions.map(x => x._1)
+    positions = mergedSentencesWithPositions.map(x => x._2).toArray
+
+    //build n-gram hashes
+    val ngramsBySentence = mergedSentences.map(entry => entry.filterNot(x => StopWords.stopWords.contains(x)).sliding(n).map(x => InverseIndexHashing.hash(x)).toList)
 
     //check each sentence for plagiarisms
-    val sentenceAndMatches = mergedSentences.zip(ngramsBySentence).
+    val sentenceAndMatches = positions.zip(ngramsBySentence).
       map(entry => (entry._1, findPlagiarismCandidates(entry._2, hyperParameters))).toMap
 
-    sc.stop()
     sentenceAndMatches
   }
 
@@ -107,8 +147,8 @@ class PlagiarismFinder(cassandraHost: String, cassandraPort: Int, cassandraUser:
     * @param minimumSentenceLength the minimum length of a sentence
     **/
   //TODO last sentence can be shorter than this length right now
-  private def mergeSentences(sentences: Array[List[String]], minimumSentenceLength: Int): List[List[String]] = {
-    var resultStack = new mutable.Stack[List[String]]
+  private def mergeSentences(sentences: Array[(List[String], TextPosition)], minimumSentenceLength: Int): List[(List[String], TextPosition)] = {
+    var resultStack = new mutable.Stack[(List[String], TextPosition)]
     sentences.foreach(
       (current) => {
         if (resultStack.isEmpty)
@@ -116,14 +156,15 @@ class PlagiarismFinder(cassandraHost: String, cassandraPort: Int, cassandraUser:
           resultStack.push(current)
         else {
           val previous = resultStack.top
-          if (previous.size >= minimumSentenceLength) {
+          if (previous._1.size >= minimumSentenceLength) {
             //the previous one is long enough, just add the next
             resultStack.push(current)
           } else {
             //the previous one is shorter, combine it with the current one
-            val combined = previous ::: current
+            val combinedWords = previous._1 ::: current._1
+            val textPosition = previous._2 + current._2
             resultStack.pop()
-            resultStack.push(combined)
+            resultStack.push((combinedWords, textPosition))
           }
         }
       })
@@ -132,32 +173,32 @@ class PlagiarismFinder(cassandraHost: String, cassandraPort: Int, cassandraUser:
   }
 
   /**
-    * Finds potential matches of the given sentence split in n-grams.
-    * It's not necessary to be a sentence, whatever list of n-grams will be queried against the database and
-    * evaluatied accordng to the [[HyperParameters]] but semantically it makes sense.
+    * Finds potential matches of the given sentence split in n-grams-hashes.
+    * It's not necessary to be a sentence, whatever list of n-gram-hashes will be queried against the database and
+    * evaluated according to the [[HyperParameters]] but semantically it makes sense.
     *
-    * @param ngrams          a sentence as a list of in n-grams
+    * @param ngram_hashes    a sentence as a list of n-gram-hashes
     * @param hyperParameters the hyper parameters. For more info about how they are used see [[HyperParameters]]
     * @return A List of [[Match]]. If there were no matches the list will be empty and the sentence is not a plagiarism.
     *
     **/
-  private def findPlagiarismCandidates(ngrams: List[List[String]], hyperParameters: HyperParameters): List[Match] = {
-    if (ngrams == null || ngrams.isEmpty)
+  private def findPlagiarismCandidates(ngram_hashes: List[Long], hyperParameters: HyperParameters): List[Match] = {
+    if (ngram_hashes == null || ngram_hashes.isEmpty)
       return List.empty[Match]
 
-    //query the database to get the n-grams.
-    val result = cassandraClient.query4GramsAsArray(ngrams)
-    val ngramsSetSize = ngrams.toSet.size
+    //query the database to get the n-gram hashes
+    val result = cassandraClient.queryNGramHashesAsArray(ngram_hashes)
+    val ngramsSetSize = ngram_hashes.toSet.size
 
     //remove all below the first threshold
     val candidates = getCandidatesBasedOnThreshold(result, ngramsSetSize, hyperParameters.threshold)
 
     if (candidates.isEmpty)
     // no candidates, sentence is not a plagiarism, return an empty match
-      List.empty[Match]
+      return List.empty[Match]
 
     //filter all non candidates
-    val filtered = result.filter(row => candidates.contains(row.getLong(InverseIndexTable.DocId)))
+    val filtered = result.filter(row => candidates.contains(row.getInt(InverseIndexTable.DocId)))
 
     //convert cassandra row to scala types, group by docIds and flatten occurrences
     val ngramsByDocId = getNgramsByDocId(filtered)
@@ -170,10 +211,10 @@ class PlagiarismFinder(cassandraHost: String, cassandraPort: Int, cassandraUser:
   /**
     * @return documents for which set(ngrams).size/ngramSize is above the threshold.
     **/
-  private def getCandidatesBasedOnThreshold(databaseResult: Array[CassandraRow], ngramsSize: Int, threshold: Double): Map[Long, Int] = {
+  private def getCandidatesBasedOnThreshold(databaseResult: Array[CassandraRow], ngramsSize: Int, threshold: Double): Map[Int, Int] = {
     //get the number of matches for each document
-    val ngramSetSizesByDocIds = databaseResult.groupBy(row => row.getLong(InverseIndexTable.DocId))
-      .map(entry => (entry._1, entry._2.map(row => row.getTupleValue(InverseIndexTable.NGram)).toSet.size))
+    val ngramSetSizesByDocIds = databaseResult.groupBy(row => row.getInt(InverseIndexTable.DocId))
+      .map(entry => (entry._1, entry._2.map(row => row.getLong(InverseIndexTable.NGram)).toSet.size))
 
     //remove all below the threshold
     val candidates = ngramSetSizesByDocIds.filter(entry => (entry._2 / ngramsSize.toDouble) > threshold)
@@ -182,42 +223,41 @@ class PlagiarismFinder(cassandraHost: String, cassandraPort: Int, cassandraUser:
 
   /**
     * Gets the scala values from the CassandraRow, expands the occurrences,
-    * and groups the n-grams by docId.
+    * and groups the n-gram-hashes by docIds.
     *
     * Example:
-    * IN: CassandraRow{ngram:["the","bridge","of","death"] docId:1,occurrences:[12,266]}
-    * OUT: 1: ngram["the","bridge","of","death"], occurrence: 12
-    * 1: ngram["the","bridge","of","death"], occurrence: 266
+    * IN: CassandraRow{ngram_hash:[1234567] docId:1,occurrences:[12,266]}
+    * OUT: 1: ngram[1234567], occurrence: 12
+    * 1: ngram[1234567], occurrence: 266
     *
-    * @param candidates n-gram rows of candidate plagiarism documents
-    * @return the n-grams by docId
+    * @param candidates rows of candidate plagiarism documents
+    * @return the n-gram-hashes by docId
     **/
-  private def getNgramsByDocId(candidates: Array[CassandraRow]): Map[Long, mutable.MutableList[(List[String], Int)]] = {
-    //the docid
-    candidates.foldLeft(Map.empty[Long, mutable.MutableList[(List[String], Int)]]) {
-      (accumulator, row) => {
+  private def getNgramsByDocId(candidates: Array[CassandraRow]): Map[Int, mutable.MutableList[(Long, Int)]] = {
 
-        val docId = row.getLong(InverseIndexTable.DocId)
-        val ngram = row.getTupleValue(InverseIndexTable.NGram).values.map(value => value.asInstanceOf[String]).toList
-        val occurences = row.get[List[Int]](InverseIndexTable.Occurrences)
+    candidates.foldLeft(Map.empty[Int, mutable.MutableList[(Long, Int)]]) {
+      (docIdsToHashesAndOccurencesTuplesMap, row) => {
+        val docId = row.getInt(InverseIndexTable.DocId)
+        val ngram_hash = row.getLong(InverseIndexTable.NGram)
+        val occurrences = row.get[List[Int]](InverseIndexTable.Occurrences)
 
-        var ngramsList = accumulator.getOrElse(docId, new mutable.MutableList[(List[String], Int)])
-        occurences.foreach(occurence => ngramsList.+=((ngram, occurence)))
+        var ngramsList = docIdsToHashesAndOccurencesTuplesMap.getOrElse(docId, new mutable.MutableList[(Long, Int)])
+        occurrences.foreach(occurence => ngramsList.+=((ngram_hash, occurence)))
 
-        accumulator.updated(docId, ngramsList)
+        docIdsToHashesAndOccurencesTuplesMap.updated(docId, ngramsList)
       }
     }
   }
 
   /**
-    * Returns the potential plagiarism matches from it's n-grams to docIds result from the database
+    * Returns the potential plagiarism matches from it's n-gram-hashes to docIds result from the database
     * according to the [[HyperParameters]].
     *
     * @return A List of [[Match]]. If there were no matches the list will be empty and the sentence is not a plagiarism.
-    *         The [[Match.start]]is the start position in the wikipedia article with docId [[Match.docId]
-    *         and the [[Match.end]] is the end
+    *         The [[Match.positon.start]]is the start position in the wikipedia article with docId [[Match.docId]]
+    *         and the [[Match.positon.end]] is the end(excluded)
     */
-  private def getMatches(ngramsByDocId: Map[Long, mutable.MutableList[(List[String], Int)]],
+  private def getMatches(ngramsByDocId: Map[Int, mutable.MutableList[(Long, Int)]],
                          ngramsSize: Int, hyperParameters: HyperParameters): List[Match] = {
     ngramsByDocId.foldLeft(List.empty[Match]) {
       (accumulator, x) => {
@@ -229,9 +269,9 @@ class PlagiarismFinder(cassandraHost: String, cassandraPort: Int, cassandraUser:
   }
 
   /** Builds candidate plagiarism segments(lists of n-grams ) split by max distance */
-  private def buildCandidatesStack(x: (Long, mutable.MutableList[(List[String], Int)]), hyperParameters: HyperParameters):
-  mutable.Stack[mutable.MutableList[(List[String], Int)]] = {
-    val candidatesStack = new mutable.Stack[mutable.MutableList[(List[String], Int)]]
+  private def buildCandidatesStack(x: (Int, mutable.MutableList[(Long, Int)]), hyperParameters: HyperParameters):
+  mutable.Stack[mutable.MutableList[(Long, Int)]] = {
+    val candidatesStack = new mutable.Stack[mutable.MutableList[(Long, Int)]]
     val sortedNgrams = x._2.sortBy(x => x._2)
     sortedNgrams.foreach(
       (current) => {
@@ -252,8 +292,8 @@ class PlagiarismFinder(cassandraHost: String, cassandraPort: Int, cassandraUser:
   }
 
   /** applies the secondaryThreshold and maxAverageDistance hyperparameter constraints */
-  private def filterAndBuildMatches(candidatesStack: mutable.Stack[mutable.MutableList[(List[String], Int)]],
-                                    ngramsSize: Int, docId: Long, hyperParameters: HyperParameters): List[Match] = {
+  private def filterAndBuildMatches(candidatesStack: mutable.Stack[mutable.MutableList[(Long, Int)]],
+                                    ngramsSize: Int, docId: Int, hyperParameters: HyperParameters): List[Match] = {
     candidatesStack.filter(entry => {
       val isAboveThreshold = (entry.size / ngramsSize.toDouble) > hyperParameters.secondaryThreshold
 
@@ -267,6 +307,28 @@ class PlagiarismFinder(cassandraHost: String, cassandraPort: Int, cassandraUser:
       val avgDistance = totalDistance / entry.size
       val isBelowMaxAverageDistance = avgDistance <= hyperParameters.maxAverageDistance
       isAboveThreshold && isBelowMaxAverageDistance
-    }).map(candidate => new Match(candidate.head._2, candidate.last._2, docId)).toList
+    }).map(candidate => new Match(new TextPosition(candidate.head._2, candidate.last._2 + 1), docId)).toList
   }
+
+  //positions local to tokenized text
+  /*get stop words before and after and add them to the result*/
+  private def expandToIncludeStopWordsAsText(m: Match, matchWikiText: Vector[String], maxDistanceBetweenNgrams: Int): String = {
+    var matchTokens = matchWikiText.slice(m.positon.start, m.positon.end)
+
+    //clip it so we don't have negative positions
+    var stopWordsBeforeStartPosition = Math.max(0, m.positon.start - maxDistanceBetweenNgrams)
+
+    //stop when a non stop word is reached starting from the end. Reverse again after to have correct ordering
+    var stopWordsBefore = matchWikiText.slice(stopWordsBeforeStartPosition, m.positon.start).reverse.takeWhile(StopWords.stopWords.contains).reverse
+
+    //clip it so we don't have positions more than elements
+    var StopWordsAfterEndPosition = Math.min(matchWikiText.length, m.positon.end + maxDistanceBetweenNgrams)
+    var stopWordsAfter = matchWikiText.slice(m.positon.end, StopWordsAfterEndPosition) takeWhile StopWords.stopWords.contains
+
+    //concatenate them
+    var resultMatch = stopWordsBefore ++ matchTokens ++ stopWordsAfter
+
+    resultMatch.mkString(" ")
+  }
+
 }

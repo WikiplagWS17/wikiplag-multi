@@ -18,7 +18,8 @@
 lazy val commonSettings = Seq(
   organization := "de.htwberlin.f4.wikiplag",
   version := "0.1.0",
-  scalaVersion := "2.11.8"
+  scalaVersion := "2.11.8",
+  parallelExecution in test := false
 )
 
 //testing dependencies
@@ -61,6 +62,8 @@ lazy val utils = (project in file("utils"))
       //used for parsing xml by the WikidumpParser
       "org.unbescape" % "unbescape" % "1.1.4.RELEASE",
       "com.databricks" % "spark-xml_2.11" % "0.4.1",
+      //read config files easily
+      "com.typesafe" % "config" % "1.3.1"
     )
   )
 
