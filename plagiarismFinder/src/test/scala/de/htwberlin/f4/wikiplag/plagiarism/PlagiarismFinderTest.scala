@@ -5,6 +5,7 @@ import org.apache.spark.SparkContext
 import org.junit.{After, Before,Test}
 import org.scalatest.junit.AssertionsForJUnit
 //TODO test thoroughly
+//TODO find good hyper parameters
 class PlagiarismFinderTest extends AssertionsForJUnit {
   var n: Int = 4
   var finder: PlagiarismFinder = _
@@ -33,20 +34,15 @@ class PlagiarismFinderTest extends AssertionsForJUnit {
     assert(true)
   }*/
 
- @Test def testPlagiarismFinder() {
-    val input = raw"wobei auch reine Instrumentalstücke in ihrem Repertoire enthalten sind."
+
+  @Test def testPlagiarismFinder() {
+    val input = raw"Und der wwfawf werwe für einen fiktiven Regisseur der Filme verantwortet, bei denen der eigentliche Regisseur seinen Namen nicht Kontaktenfrom. zuletzt', weil Arthur  Hiller  der eigentliche  regisseur "
     //find plagiarisms using default hyper parameters
     val matches = finder.findPlagiarisms(input, new HyperParameters())
 
-    matches.foreach(println)
-    assert(true)
-  }
-  //sc wrong with more than one
+println("size:"+input.length)
+    println(matches)
 
-  @Test def testPlagiarismFinderExtendenText() {
-    val input = raw"wobei auch reine Instrumentalstücke in ihrem Repertoire enthalten sind.This matches should be empty"
-    //find plagiarisms using default hyper parameters
-    val matches = finder.findPlagiarismsExtendedText(input, new HyperParameters())
 
     matches.foreach(x=>println("["+input.substring(x._1.start,x._1.end)+"] Matches: "+x._2))
     assert(true)

@@ -8,7 +8,6 @@ import de.htwberlin.f4.wikiplag.utils.inverseindex.{InverseIndexBuilderImpl, Inv
 import org.apache.spark.SparkContext
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 /**
   * Represents one potential plagiarism
@@ -32,10 +31,6 @@ class TextPosition(var start: Int, var end: Int) {
   def length(): Int = {
     start - end
   }
-
-  def +(other: TextPosition): TextPosition = {
-    new TextPosition(this.start, this.end + other.start)
-  }
 }
 
 /**
@@ -55,9 +50,9 @@ class TextPosition(var start: Int, var end: Int) {
   * @param secondaryThreshold       The secondary threshold - applied after building plagiarism segments
   *                                 similarly to [[HyperParameters.threshold]]
   **/
-class HyperParameters(val minimumSentenceLength: Int = 6, val threshold: Float = 0.85f,
-                      val maxDistanceBetweenNgrams: Int = 6, val maxAverageDistance: Int = 3,
-                      val secondaryThreshold: Float = 0.80f) {
+class HyperParameters(val minimumSentenceLength: Int = 12, val threshold: Float = 0.25f,
+                      val maxDistanceBetweenNgrams: Int = 6, val maxAverageDistance: Int = 4,
+                      val secondaryThreshold: Float = 0.25f) {
 
   override def toString: String = s"HyperParameters(minimumSentenceLength=$minimumSentenceLength," +
     s" threshold=$threshold, maxDistanceBetweenNgrams=$maxDistanceBetweenNgrams," +
@@ -80,15 +75,16 @@ class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameter
   val cassandraClient: CassandraClient = new CassandraClient(sc, cassandraParameters)
 
   /** */
-  def findPlagiarismsExtendedText(rawText: String, hyperParameters: HyperParameters): Map[TextPosition, List[String]] = {
-    var potentialPlagiarims = findPlagiarisms(rawText, hyperParameters)
+  def findPlagiarisms(rawText: String, hyperParameters: HyperParameters): Map[TextPosition, List[(String,Int)]] = {
+    var potentialPlagiarimsAsDatabasePositions = findPlagiarismsDatabasePositions(rawText, hyperParameters)
 
-    val docIds = potentialPlagiarims.flatMap(x => x._2).map(x => x.docId).toList
-
+    val docIds = potentialPlagiarimsAsDatabasePositions.flatMap(x => x._2).map(x => x.docId).toList
     val docIdsToDocsMap = cassandraClient.queryDocIdsTokensAsMap(docIds)
 
-    val result = potentialPlagiarims.map(textPlagiarismPair => textPlagiarismPair._1 ->
-      textPlagiarismPair._2.map(m => expandToIncludeStopWordsAsText(m, docIdsToDocsMap(m.docId), hyperParameters.maxDistanceBetweenNgrams)))
+    val result = potentialPlagiarimsAsDatabasePositions.map(textPlagiarismPair => textPlagiarismPair._1 ->
+      textPlagiarismPair._2.map(m => {(
+        getTextFromMatchPosition(m.positon, docIdsToDocsMap(m.docId), hyperParameters.maxDistanceBetweenNgrams, n),m.docId)
+      }))
 
     result
   }
@@ -96,29 +92,24 @@ class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameter
   /**
     * Returns potential plagiarism matches to the given raw text input.
     * The raw text is split into sentences and each sentence is queried separately.
-    * Because of the removed stop words the match position might be up to [[HyperParameters.maxDistanceBetweenNgrams]] bigger.
-    * Use the findPlagiarismsExtendedText Method to get those also.
+    * The result natches return the positions of the n-grams from the database which aren't exactly the matches- they
+    * include only the first word of the n-gram. The end of the real matching text potionis the position + n-1 no stop word words after it.
     *
     * @param rawText         the raw, unprocessed text(user input)
     * @param hyperParameters the hyper parameters
     * @return a map of positions in the original text to matches
     **/
   //TODO potential improvement- query database once instead of per sentence
-  def findPlagiarisms(rawText: String, hyperParameters: HyperParameters): Map[TextPosition, List[Match]] = {
+  private def findPlagiarismsDatabasePositions(rawText: String, hyperParameters: HyperParameters): Map[TextPosition, List[Match]] = {
 
     //split into sentences
     val inputAsRawSentences = rawText.split("[.,!?]")
 
-
     //get the positions
     var positions = inputAsRawSentences.map(x => {
       val start = rawText.indexOf(x)
-      //+1 because of the punctuation mark
-      new TextPosition(start, start + x.length + 1)
+      new TextPosition(start, start + x.length)
     })
-    //remove the last punctuation mark if necessary
-    if (!".,!?".contains(rawText.last))
-      positions.last.end = positions.last.end - 1
 
     //split into tokens using the inverse index builder
     val sentencesTokenized = inputAsRawSentences.
@@ -131,13 +122,18 @@ class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameter
     positions = mergedSentencesWithPositions.map(x => x._2).toArray
 
     //build n-gram hashes
-    val ngramsBySentence = mergedSentences.map(entry => entry.filterNot(x => StopWords.stopWords.contains(x)).sliding(n).map(x => InverseIndexHashing.hash(x)).toList)
+    //the filter is required because the last element of sliding sliding may be of size <n
+    val ngramsBySentence = mergedSentences.map(entry => entry.filterNot(x => StopWords.stopWords.contains(x)).sliding(n).filter(_.size==n).map(x => InverseIndexHashing.hash(x)).toList)
+
+    //while debugging uncomment this to see the values as n-grams isntead of n-gram hashes
+    //val tmp = mergedSentences.map(entry => entry.filterNot(x => StopWords.stopWords.contains(x)).sliding(n).filter(_.size==n).map(x => x).toList)
 
     //check each sentence for plagiarisms
     val sentenceAndMatches = positions.zip(ngramsBySentence).
       map(entry => (entry._1, findPlagiarismCandidates(entry._2, hyperParameters))).toMap
 
-    sentenceAndMatches
+    //filter out empty matches
+    sentenceAndMatches.filter(x=>x._2.nonEmpty)
   }
 
   /**
@@ -146,7 +142,6 @@ class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameter
     * @param sentences             the sentences to merge
     * @param minimumSentenceLength the minimum length of a sentence
     **/
-  //TODO last sentence can be shorter than this length right now
   private def mergeSentences(sentences: Array[(List[String], TextPosition)], minimumSentenceLength: Int): List[(List[String], TextPosition)] = {
     var resultStack = new mutable.Stack[(List[String], TextPosition)]
     sentences.foreach(
@@ -162,12 +157,23 @@ class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameter
           } else {
             //the previous one is shorter, combine it with the current one
             val combinedWords = previous._1 ::: current._1
-            val textPosition = previous._2 + current._2
+            val textPosition = new TextPosition(previous._2.start,current._2.end)
             resultStack.pop()
             resultStack.push((combinedWords, textPosition))
           }
         }
       })
+
+    //ensure the last one also fulfils the condition
+    if(resultStack.size >=2)
+      if(resultStack.top._1.size < minimumSentenceLength){
+        val lastAdded=resultStack.pop()
+        val beforeLastAdded=resultStack.pop()
+        val combinedWords = beforeLastAdded._1 ::: lastAdded._1
+        val textPosition = new TextPosition(beforeLastAdded._2.start, lastAdded._2.end)
+        resultStack.push((combinedWords, textPosition))
+        }
+
     //we have to reverse the stack so that the first sentences are first
     resultStack.reverse.toList
   }
@@ -307,28 +313,40 @@ class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameter
       val avgDistance = totalDistance / entry.size
       val isBelowMaxAverageDistance = avgDistance <= hyperParameters.maxAverageDistance
       isAboveThreshold && isBelowMaxAverageDistance
-    }).map(candidate => new Match(new TextPosition(candidate.head._2, candidate.last._2 + 1), docId)).toList
+    }).map(candidate => new Match(new TextPosition(candidate.head._2, candidate.last._2), docId)).toList
   }
 
   //positions local to tokenized text
   /*get stop words before and after and add them to the result*/
-  private def expandToIncludeStopWordsAsText(m: Match, matchWikiText: Vector[String], maxDistanceBetweenNgrams: Int): String = {
-    var matchTokens = matchWikiText.slice(m.positon.start, m.positon.end)
+  //to get the actual position in the text as [include,excluded) indices. n-1 for the following words after the
+  //n-gram key and +1 so it is the exclusive position
+  //m.positon.end=m.positon.end+n
 
-    //clip it so we don't have negative positions
-    var stopWordsBeforeStartPosition = Math.max(0, m.positon.start - maxDistanceBetweenNgrams)
+  private def getTextFromMatchPosition(position: TextPosition, matchWikiText: Vector[String], maxDistanceBetweenNgrams: Int, n: Int): String = {
+    //slice handles out of  bounds exceptions by clipping the bounds
+    var matchingTokensSequence = getMatchingTokenizedString(position, matchWikiText, n)
 
-    //stop when a non stop word is reached starting from the end. Reverse again after to have correct ordering
-    var stopWordsBefore = matchWikiText.slice(stopWordsBeforeStartPosition, m.positon.start).reverse.takeWhile(StopWords.stopWords.contains).reverse
-
-    //clip it so we don't have positions more than elements
-    var StopWordsAfterEndPosition = Math.min(matchWikiText.length, m.positon.end + maxDistanceBetweenNgrams)
-    var stopWordsAfter = matchWikiText.slice(m.positon.end, StopWordsAfterEndPosition) takeWhile StopWords.stopWords.contains
-
-    //concatenate them
-    var resultMatch = stopWordsBefore ++ matchTokens ++ stopWordsAfter
-
+    var resultMatch = matchingTokensSequence
     resultMatch.mkString(" ")
   }
 
+  /*The matches end position don't include the n-grams to follow*/
+  private def getMatchingTokenizedString(position: TextPosition, matchWikiText: Vector[String], n: Int): Vector[String] = {
+
+    //all words in the text after the match
+    val afterMatch = matchWikiText.drop(position.end + 1)
+
+    //takes words while n-1 non stop words have been taken
+    var nonStopWordsCounter = n - 1
+    val endTokens = afterMatch.takeWhile(x => {
+      var shouldReturn = nonStopWordsCounter != 0
+      if (!StopWords.stopWords.contains(x))
+        nonStopWordsCounter -= 1
+      shouldReturn
+    })
+    //including start, excluidng end
+    val matchFromPostions = matchWikiText.slice(position.start, position.end + 1)
+    //concatenate them
+    matchFromPostions ++ endTokens
+  }
 }
