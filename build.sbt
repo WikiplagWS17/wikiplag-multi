@@ -43,7 +43,7 @@ lazy val sparkDependencies = Seq(
 //allows communication with a cassandra database from spark
 //https://github.com/datastax/spark-cassandra-connector
 lazy val cassandraDependencies = Seq(
-  "datastax" % "spark-cassandra-connector" % "2.0.1-s_2.11"
+  "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.1"
 )
 
 /* ************************************************************************* *\
