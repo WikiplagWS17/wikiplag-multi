@@ -23,7 +23,7 @@ class PlagiarismFinderTest extends AssertionsForJUnit {
   }
 
 
-  /*@Test def testPlagiarismFinder() {
+  @Test def testPlagiarismFinder2() {
     val input = raw"Korpiklaani (finn. „Klan der Wildnis“, auch „Klan des Waldes“) ist eine finnische Folk-Metal-Band aus Lahti mit starken Einflüssen aus der traditionellen Volksmusik. Die Texte der Band handeln von mythologischen Themen sowie der Natur und dem Feiern, wobei auch reine Instrumentalstücke in ihrem Repertoire enthalten sind. Sie selbst sehen ihre Musik auch vom Humppa beeinflusst. Bislang wurden sechs reguläre Studioalben und eine EP veröffentlicht, daneben eine Live-DVD, sowie eine Wiederveröffentlichung der Demos."
     val input2 = raw"Der Kragenbär, Asiatische Schwarzbär, Mondbär oder Tibetbär (Ursus thibetanus) ist eine Raubtierart aus der Familie der Bären (Ursidae). In seiner Heimat wird er meistens als black bear bezeichnet oder als Baribal. Im Vergleich zum eher gefürchteten Grizzlybär gilt der Schwarzbär als weniger gefährlich."
 
@@ -31,8 +31,9 @@ class PlagiarismFinderTest extends AssertionsForJUnit {
     val matches = finder.findPlagiarisms(input + input2, new HyperParameters())
 
     matches.foreach(println)
+    matches.foreach(x=>println("["+(input+input2).substring(x._1.start,x._1.end)+"] Matches: "+x._2))
     assert(true)
-  }*/
+  }
 
 
   @Test def testPlagiarismFinder() {

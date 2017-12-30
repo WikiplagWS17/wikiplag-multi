@@ -22,6 +22,9 @@ lazy val commonSettings = Seq(
   parallelExecution in test := false
 )
 
+//resolvers
+resolvers += Classpaths.typesafeReleases
+
 //testing dependencies
 lazy val testDependencies = Seq(
   //not sure if this is required
@@ -30,13 +33,10 @@ lazy val testDependencies = Seq(
   "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 )
 
-//spark context, spark config ...
 lazy val sparkDependencies = Seq(
-  "org.apache.spark" %% "spark-core" % "2.1.1" % "provided"
-)
-
-//dataframe ...
-lazy val sparkSQLDependencies = Seq(
+  //spark context, spark config ...
+  "org.apache.spark" %% "spark-core" % "2.1.1" % "provided",
+  //dataframe ...
   "org.apache.spark" %% "spark-sql" % "2.1.1" % "provided"
 )
 
@@ -56,7 +56,6 @@ lazy val utils = (project in file("utils"))
     // other settings
     libraryDependencies ++= testDependencies,
     libraryDependencies ++= sparkDependencies,
-    libraryDependencies ++= sparkSQLDependencies,
     libraryDependencies ++= cassandraDependencies,
     libraryDependencies ++= Seq(
       //used for parsing xml by the WikidumpParser
@@ -76,7 +75,6 @@ lazy val plagiarismFinder = (project in file("plagiarismFinder"))
     name := "WikiPlagAnalyser",
     libraryDependencies ++= testDependencies,
     libraryDependencies ++= sparkDependencies,
-    libraryDependencies++=sparkSQLDependencies,
     libraryDependencies ++= Seq(
       //add other dependencies for the analyser project here
     )
@@ -92,7 +90,6 @@ lazy val wikipediaImporter = (project in file("wikipediaImporter"))
     name := "WikiPlagImporter",
     libraryDependencies ++= testDependencies,
     libraryDependencies ++= sparkDependencies,
-    libraryDependencies ++= sparkSQLDependencies,
     libraryDependencies ++= cassandraDependencies,
     libraryDependencies ++= Seq(
       //command line arguments parsing helper
@@ -108,11 +105,29 @@ lazy val wikipediaImporter = (project in file("wikipediaImporter"))
 /* ************************************************************************* *\
 |                                REST-API Project                             |
 \* ************************************************************************* */
-//TODO not yet added to multi-project
+
+lazy val ScalatraVersion = "2.6.2"
+
 lazy val restApi = (project in file("restApi"))
   .settings(
     commonSettings,
     name := "WikiPlagRestAPI",
-    libraryDependencies ++= testDependencies
-    // other settings
-  ).dependsOn(utils, plagiarismFinder)
+    libraryDependencies ++= testDependencies,
+    //TODO @Anton remove spark and cass dependencies if not used by Max
+    libraryDependencies ++=sparkDependencies,
+    libraryDependencies ++=cassandraDependencies,
+    libraryDependencies ++= Seq(
+      "org.scalatra" %% "scalatra" % ScalatraVersion,
+      "org.scalatra" %% "scalatra-scalatest" % ScalatraVersion % "test",
+      "ch.qos.logback" % "logback-classic" % "1.1.5" % "runtime",
+      //add compile scope so we can use jetty in standalone mode
+      "org.eclipse.jetty" % "jetty-webapp" % "9.2.15.v20160210" % "container;compile",
+      "javax.servlet" % "javax.servlet-api" % "3.1.0" % "provided"
+      //add further required dependeices here
+    ),
+    assemblyJarName in assembly := "wiki_rest.jar",
+    mainClass in assembly := Some("de.htwberlin.f4.wikiplag.rest.launcher.JettyLauncher"),
+
+  ).dependsOn(utils, plagiarismFinder).
+  enablePlugins(SbtTwirl).
+  enablePlugins(ScalatraPlugin)
