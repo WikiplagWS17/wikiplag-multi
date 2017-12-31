@@ -35,9 +35,9 @@ lazy val testDependencies = Seq(
 
 lazy val sparkDependencies = Seq(
   //spark context, spark config ...
-  "org.apache.spark" %% "spark-core" % "2.1.1" % "compile",
+  "org.apache.spark" %% "spark-core" % "2.1.1" % "provided",
   //dataframe ...
-  "org.apache.spark" %% "spark-sql" % "2.1.1" % "compile"
+  "org.apache.spark" %% "spark-sql" % "2.1.1" % "provided"
 )
 
 //allows communication with a cassandra database from spark
@@ -122,7 +122,7 @@ lazy val restApi = (project in file("restApi"))
       "ch.qos.logback" % "logback-classic" % "1.1.5" % "runtime",
       //add compile scope so we can use jetty in standalone mode
       "org.eclipse.jetty" % "jetty-webapp" % "9.2.15.v20160210" % "container;compile",
-      "javax.servlet" % "javax.servlet-api" % "3.1.0" % "compile"
+      "javax.servlet" % "javax.servlet-api" % "3.1.0" % "provided"
       //add further required dependeices here
     ),
     assemblyJarName in assembly := "wiki_rest.jar",
