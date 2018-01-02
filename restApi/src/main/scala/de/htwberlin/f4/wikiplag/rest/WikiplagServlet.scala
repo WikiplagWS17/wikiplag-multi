@@ -93,8 +93,8 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     val result = new PlagiarismFinder(this.sparkContext,this.cassandra_parameter)
                                       .findPlagiarisms(text_obj.text,new HyperParameters())
 
-    result
-
+    println(result.toList.toString())
+   "success"
   }
 
 }
