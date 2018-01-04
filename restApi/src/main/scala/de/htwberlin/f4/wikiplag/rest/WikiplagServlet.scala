@@ -89,12 +89,20 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     // read json input file and convert to Text object
     val text_obj = parsedBody.extract[Text]
 
-
+    // you will get Mapping Exception , if json input file is not valid and well formed
+    // got java.lang.ExceptionInInitializerError when i run findPlagiarisms
+    /*
     val result = new PlagiarismFinder(this.sparkContext,this.cassandra_parameter)
-      .findPlagiarisms(text_obj.text,new HyperParameters())
+                                      .findPlagiarisms(text_obj.text,new HyperParameters())
 
     println(result.toList.toString())
-    "success"
+
+   */
+
+    println(text_obj.text)
+
+    text_obj.text
+
   }
 
 }

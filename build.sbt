@@ -141,6 +141,11 @@ lazy val restApi = (project in file("restApi"))
     assemblyJarName in assembly := "wiki_rest.jar",
     mainClass in assembly := Some("de.htwberlin.f4.wikiplag.rest.launcher.JettyLauncher"),
 
+    assemblyMergeStrategy in assembly := {
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case x => MergeStrategy.first
+    }
+
   ).dependsOn(utils, plagiarismFinder).
   enablePlugins(SbtTwirl).
   enablePlugins(ScalatraPlugin)
