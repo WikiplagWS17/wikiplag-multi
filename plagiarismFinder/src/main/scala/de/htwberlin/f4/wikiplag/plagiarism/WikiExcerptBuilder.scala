@@ -31,7 +31,8 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
 
   private def buildDisplayExcrept(before: String, plagiarism: String, after: String): String = {
     //specifying the span class in the rest api is absolutely disgusting..
-    s"[...] $before <span class=\"wiki_plag\">$plagiarism</span> $after [...]"
+    var span=""" <span class="wiki_plag">""""
+    s"[...] $before $span$plagiarism $after [...]"
   }
 
   /** Finds the exact excerpt for the tokenized match from the given wikipedia article.
