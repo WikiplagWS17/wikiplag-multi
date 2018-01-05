@@ -8,6 +8,6 @@ import de.htwberlin.f4.wikiplag.rest.servlets.WikiplagServlet
 class ScalatraBootstrap extends LifeCycle {
   override def init(context: ServletContext) {
     //the path to our service
-    context.mount(new WikiplagServlet, "/*")
+    context.mount(new WikiplagServlet, "/wikiplag/rest/*")
   }
 }

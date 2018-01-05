@@ -1,6 +1,5 @@
 package de.htwberlin.f4.wikiplag.rest.servlets
 
-import com.datastax.spark.connector._
 import de.htwberlin.f4.wikiplag.plagiarism.models.HyperParameters
 import de.htwberlin.f4.wikiplag.plagiarism.{PlagiarismFinder, WikiExcerptBuilder}
 import de.htwberlin.f4.wikiplag.rest.Text
@@ -16,64 +15,47 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
   protected implicit val jsonFormats: Formats = DefaultFormats
 
   private val separator: String = System.getProperty("file.separator")
-  private var sparkContext: SparkContext = _
-  private var cassandraParameter: CassandraParameters = _
+
   private var cassaandraClient: CassandraClient = _
-
-
-  private var keyspace: String = _
-
-  private var table: String = _
 
   override def init(): Unit = {
     println("in init")
 
-    cassandraParameter = CassandraParameters.readFromConfigFile("app.conf")
+    var cassandraParameter = CassandraParameters.readFromConfigFile("app.conf")
     var conf = cassandraParameter.toSparkConf("[Wikiplag]REST-API")
-    sparkContext = new SparkContext(conf)
+    var sparkContext = new SparkContext(conf)
 
-    keyspace = cassandraParameter.keyspace
-    table = cassandraParameter.articlesTable
     cassaandraClient = new CassandraClient(sparkContext, cassandraParameter)
   }
 
   before() {}
-
-  get("/") {
-    "Would Elijah Wood? If Elijah Wood could Elijah Wood would"
-  }
-
   /*
 	 * document path
 	 */
-  get("/wikiplag/document/:id") {
-    contentType = "text/plain"
-    val wikiId = params("id").toInt
-    println(s"get /wikiplag/document/:id with $wikiId")
-    //get cassandra wikipedia originals table from config data
-    val df = sparkContext.cassandraTable(this.keyspace, this.table)
-    val document = df.select("wikitext")
-      .where("docid = ?", wikiId)
-      .collect()
-      .toList
-      .toString()
-
+  get("/documents/:id") {
     try {
+      contentType = "text/plain"
+      val wikiId = params("id").toInt
+      println(s"get /documents/:id with $wikiId")
+      val document = cassaandraClient.queryArticlesAsMap(List(wikiId))(wikiId).text
       val begin_index = document.indexOf("TEMPLATE")
       val end_index = document.indexOf("Weblinks")
       document.substring(begin_index, end_index)
     } catch {
       case e: StringIndexOutOfBoundsException => halt(404, "Not Found")
+      case e: NumberFormatException => halt(400, "Invalid Id")
+      case e: Exception =>
+        e.printStackTrace()
+        halt(500, "Internal server error")
     }
   }
-
 
   /*
   * plagiarism path
   */
-  post("/wikiplag/analyse") {
+  post("/analyse") {
     println("post /wikiplag/analyse")
-    contentType = "text/plain"
+    contentType = formats("json")
     try {
       // read json input file and convert to Text object
       val text_obj = parsedBody.extract[Text]
