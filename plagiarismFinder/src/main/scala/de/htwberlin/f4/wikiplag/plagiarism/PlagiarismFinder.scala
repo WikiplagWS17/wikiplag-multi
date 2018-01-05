@@ -1,63 +1,12 @@
 package de.htwberlin.f4.wikiplag.plagiarism
 
 import com.datastax.spark.connector.CassandraRow
-import de.htwberlin.f4.wikiplag.utils.CassandraParameters
+import de.htwberlin.f4.wikiplag.plagiarism.models.{HyperParameters, Match, TextPosition}
 import de.htwberlin.f4.wikiplag.utils.database.CassandraClient
 import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable
 import de.htwberlin.f4.wikiplag.utils.inverseindex.{InverseIndexBuilderImpl, InverseIndexHashing, StopWords}
-import org.apache.spark.SparkContext
 
 import scala.collection.mutable
-
-/**
-  * Represents one potential plagiarism
-  *
-  * @param positon the text position of the plagiarism
-  * @param docId   the docId id
-  */
-class Match(val positon: TextPosition, val docId: Int) {
-
-  override def toString = s"Match(positon=$positon, docId=$docId)"
-}
-
-/** Represents a position in a text
-  *
-  * @param start the start
-  * @param end   the end of the text position */
-class TextPosition(var start: Int, var end: Int) {
-  override def toString = s"TextPosition(start=$start, end=$end)"
-
-  /*start - end*/
-  def length(): Int = {
-    start - end
-  }
-}
-
-/**
-  * @author
-  * Anton K.
-  *
-  * Encapsulates the hyper parameters.
-  * @param minimumSentenceLength    The minimum length (number of words) in a sentence.
-  *                                 Shorter sentences are merged together to be atleast this long.
-  * @param threshold                The initial threshold.
-  *                                 Articles which have an unique n-grams to input n-grams ratio
-  *                                 below this threshold are filtered out
-  * @param maxDistanceBetweenNgrams The maximum distance between two n-grams.
-  *                                 If the distance of 2 given n-grams is above this
-  *                                 they are split into separate plagiarism segments
-  * @param maxAverageDistance       The maximum average distance between a potential plagiarism segment.
-  * @param secondaryThreshold       The secondary threshold - applied after building plagiarism segments
-  *                                 similarly to [[HyperParameters.threshold]]
-  **/
-class HyperParameters(val minimumSentenceLength: Int = 12, val threshold: Float = 0.25f,
-                      val maxDistanceBetweenNgrams: Int = 6, val maxAverageDistance: Int = 4,
-                      val secondaryThreshold: Float = 0.25f) {
-
-  override def toString: String = s"HyperParameters(minimumSentenceLength=$minimumSentenceLength," +
-    s" threshold=$threshold, maxDistanceBetweenNgrams=$maxDistanceBetweenNgrams," +
-    s" maxAverageDistance=$maxAverageDistance, secondaryThreshold=$secondaryThreshold)"
-}
 
 /**
   * @author
@@ -67,23 +16,23 @@ class HyperParameters(val minimumSentenceLength: Int = 12, val threshold: Float 
   *
   * A class for determining if a given text has parts which are potential wikipedia plagiarisms.
   * @constructor Creates a new instance.
-  * @param cassandraParameters cassandra parameters
-  * @param sc                  the spark context
+  * @param cassandraClient the cassandra client
+  * @param n the n used to build the n-grams
+  *
   **/
-class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameters, n: Int = 4) {
-
-  val cassandraClient: CassandraClient = new CassandraClient(sc, cassandraParameters)
+class PlagiarismFinder(val cassandraClient: CassandraClient, n: Int = 4) {
 
   /** */
-  def findPlagiarisms(rawText: String, hyperParameters: HyperParameters): Map[TextPosition, List[(String,Int)]] = {
+  def findPlagiarisms(rawText: String, hyperParameters: HyperParameters): Map[TextPosition, List[(Vector[String], Int)]] = {
     var potentialPlagiarimsAsDatabasePositions = findPlagiarismsDatabasePositions(rawText, hyperParameters)
 
     val docIds = potentialPlagiarimsAsDatabasePositions.flatMap(x => x._2).map(x => x.docId).toList
     val docIdsToDocsMap = cassandraClient.queryDocIdsTokensAsMap(docIds)
 
     val result = potentialPlagiarimsAsDatabasePositions.map(textPlagiarismPair => textPlagiarismPair._1 ->
-      textPlagiarismPair._2.map(m => {(
-        getTextFromMatchPosition(m.positon, docIdsToDocsMap(m.docId), hyperParameters.maxDistanceBetweenNgrams, n),m.docId)
+      textPlagiarismPair._2.map(m => {
+        (
+          getTextFromMatchPosition(m.positon, docIdsToDocsMap(m.docId), hyperParameters.maxDistanceBetweenNgrams, n), m.docId)
       }))
 
     result
@@ -123,7 +72,7 @@ class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameter
 
     //build n-gram hashes
     //the filter is required because the last element of sliding sliding may be of size <n
-    val ngramsBySentence = mergedSentences.map(entry => entry.filterNot(x => StopWords.stopWords.contains(x)).sliding(n).filter(_.size==n).map(x => InverseIndexHashing.hash(x)).toList)
+    val ngramsBySentence = mergedSentences.map(entry => entry.filterNot(x => StopWords.stopWords.contains(x)).sliding(n).filter(_.size == n).map(x => InverseIndexHashing.hash(x)).toList)
 
     //while debugging uncomment this to see the values as n-grams isntead of n-gram hashes
     //val tmp = mergedSentences.map(entry => entry.filterNot(x => StopWords.stopWords.contains(x)).sliding(n).filter(_.size==n).map(x => x).toList)
@@ -133,7 +82,7 @@ class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameter
       map(entry => (entry._1, findPlagiarismCandidates(entry._2, hyperParameters))).toMap
 
     //filter out empty matches
-    sentenceAndMatches.filter(x=>x._2.nonEmpty)
+    sentenceAndMatches.filter(x => x._2.nonEmpty)
   }
 
   /**
@@ -157,7 +106,7 @@ class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameter
           } else {
             //the previous one is shorter, combine it with the current one
             val combinedWords = previous._1 ::: current._1
-            val textPosition = new TextPosition(previous._2.start,current._2.end)
+            val textPosition = new TextPosition(previous._2.start, current._2.end)
             resultStack.pop()
             resultStack.push((combinedWords, textPosition))
           }
@@ -165,14 +114,14 @@ class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameter
       })
 
     //ensure the last one also fulfils the condition
-    if(resultStack.size >=2)
-      if(resultStack.top._1.size < minimumSentenceLength){
-        val lastAdded=resultStack.pop()
-        val beforeLastAdded=resultStack.pop()
+    if (resultStack.size >= 2)
+      if (resultStack.top._1.size < minimumSentenceLength) {
+        val lastAdded = resultStack.pop()
+        val beforeLastAdded = resultStack.pop()
         val combinedWords = beforeLastAdded._1 ::: lastAdded._1
         val textPosition = new TextPosition(beforeLastAdded._2.start, lastAdded._2.end)
         resultStack.push((combinedWords, textPosition))
-        }
+      }
 
     //we have to reverse the stack so that the first sentences are first
     resultStack.reverse.toList
@@ -322,12 +271,12 @@ class PlagiarismFinder(sc: SparkContext, cassandraParameters: CassandraParameter
   //n-gram key and +1 so it is the exclusive position
   //m.positon.end=m.positon.end+n
 
-  private def getTextFromMatchPosition(position: TextPosition, matchWikiText: Vector[String], maxDistanceBetweenNgrams: Int, n: Int): String = {
+  private def getTextFromMatchPosition(position: TextPosition, matchWikiText: Vector[String], maxDistanceBetweenNgrams: Int, n: Int): Vector[String] = {
     //slice handles out of  bounds exceptions by clipping the bounds
     var matchingTokensSequence = getMatchingTokenizedString(position, matchWikiText, n)
 
     var resultMatch = matchingTokensSequence
-    resultMatch.mkString(" ")
+    resultMatch
   }
 
   /*The matches end position don't include the n-grams to follow*/
