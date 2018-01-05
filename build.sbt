@@ -40,6 +40,13 @@ lazy val sparkDependencies = Seq(
   "org.apache.spark" %% "spark-sql" % "2.1.1" % "provided"
 )
 
+lazy val sparkDependencies_compile = Seq(
+  //spark context, spark config ...
+  "org.apache.spark" %% "spark-core" % "2.1.1" % "compile",
+  //dataframe ...
+  "org.apache.spark" %% "spark-sql" % "2.1.1" % "compile"
+)
+
 //allows communication with a cassandra database from spark
 //https://github.com/datastax/spark-cassandra-connector
 lazy val cassandraDependencies = Seq(
@@ -114,7 +121,8 @@ lazy val restApi = (project in file("restApi"))
     name := "WikiPlagRestAPI",
     libraryDependencies ++= testDependencies,
     //TODO @Anton remove spark and cass dependencies if not used by Max
-    libraryDependencies ++=sparkDependencies,
+    //libraryDependencies ++=sparkDependencies,
+    libraryDependencies ++=sparkDependencies_compile,
     libraryDependencies ++=cassandraDependencies,
     libraryDependencies ++= Seq(
       "org.scalatra" %% "scalatra" % ScalatraVersion,
