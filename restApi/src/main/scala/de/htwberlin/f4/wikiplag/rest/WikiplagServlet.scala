@@ -6,7 +6,7 @@ import com.datastax.spark.connector._
 import com.typesafe.config.ConfigFactory
 import org.json4s.{DefaultFormats, Formats}
 import org.scalatra.json._
-import de.htwberlin.f4.wikiplag.plagiarism.{PlagiarismFinder,HyperParameters}
+import de.htwberlin.f4.wikiplag.plagiarism.{PlagiarismFinder, HyperParameters}
 import de.htwberlin.f4.wikiplag.utils.CassandraParameters
 
 class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
@@ -16,8 +16,7 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
 
   private val separator: String = System.getProperty("file.separator")
   private var sparkContext: SparkContext = _
-  private var cassandra_parameter:CassandraParameters = _
-  private val SlidingSize = 30
+  private var cassandraParameter: CassandraParameters = _
 
   private var keyspace: String = _
 
@@ -25,28 +24,13 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
 
   override def init(): Unit = {
     println("in init")
-    var config = ConfigFactory.load("backend.properties")
 
-    val conf = new SparkConf(true)
-      .setMaster(config.getString("spark.master"))
-      .setAppName("WikiplagBackend")
-      .set("spark.cassandra.connection.host", config.getString("cass.host"))
-      .set("spark.cassandra.connection.port", config.getString("cass.port"))
-      .set("spark.cassandra.auth.username", config.getString("cass.user"))
-      .set("spark.cassandra.auth.password", config.getString("cass.password"))
-
+    cassandraParameter = CassandraParameters.readFromConfigFile("app.conf")
+    var conf = cassandraParameter.toSparkConf("[Wikiplag]REST-API")
     sparkContext = new SparkContext(conf)
 
-    keyspace = config.getString("cass.keyspace")
-    table = config.getString("cass.wikiTable_ar")
-
-    cassandra_parameter = new CassandraParameters(config.getString("cass.wikiTable_ar"),
-      config.getString("cass.wikiTable_inv"),
-      config.getString("cass.wikiTable_to"),
-      config.getString("cass.keyspace"),
-      config.getString("cass.user"),
-      config.getString("cass.password"),
-      config.getString("cass.host"))
+    keyspace = cassandraParameter.keyspace
+    table = cassandraParameter.articlesTable
   }
 
   before() {}
@@ -73,9 +57,9 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     try {
       val begin_index = document.indexOf("TEMPLATE")
       val end_index = document.indexOf("Weblinks")
-      document.substring(begin_index,end_index)
-    }catch{
-      case e:StringIndexOutOfBoundsException => halt(404,"Not Found")
+      document.substring(begin_index, end_index)
+    } catch {
+      case e: StringIndexOutOfBoundsException => halt(404, "Not Found")
     }
   }
 
@@ -87,21 +71,13 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     println("post /wikiplag/analyse")
     contentType = "text/plain"
     // read json input file and convert to Text object
-    val text_obj = parsedBody.extract[Text]
-
-    // you will get Mapping Exception , if json input file is not valid and well formed
-    // got java.lang.ExceptionInInitializerError when i run findPlagiarisms
-    /*
-    val result = new PlagiarismFinder(this.sparkContext,this.cassandra_parameter)
-                                      .findPlagiarisms(text_obj.text,new HyperParameters())
-
-    println(result.toList.toString())
-
-   */
-
-    println(text_obj.text)
-
-    text_obj.text
+    try {
+      val text_obj = parsedBody.extract[Text]
+      val result = new PlagiarismFinder(this.sparkContext, this.cassandraParameter).findPlagiarisms(text_obj.text, new HyperParameters())
+      result
+    }catch {
+      case e:org.json4s.MappingException=> halt(400,"Malformed JSON")
+    }
 
   }
 
