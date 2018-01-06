@@ -22,7 +22,7 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     println("in init")
 
     var cassandraParameter = CassandraParameters.readFromConfigFile("app.conf")
-    var conf = cassandraParameter.toSparkConf("[Wikiplag]REST-API")
+    var conf = cassandraParameter.toSparkConf("[Wikiplag]REST-API").setMaster("local")
     var sparkContext = new SparkContext(conf)
 
     cassaandraClient = new CassandraClient(sparkContext, cassandraParameter)
