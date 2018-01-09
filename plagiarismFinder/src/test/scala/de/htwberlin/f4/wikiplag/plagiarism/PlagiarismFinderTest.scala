@@ -1,8 +1,10 @@
 package de.htwberlin.f4.wikiplag.plagiarism
 
+import de.htwberlin.f4.wikiplag.plagiarism.models.HyperParameters
 import de.htwberlin.f4.wikiplag.utils.CassandraParameters
+import de.htwberlin.f4.wikiplag.utils.database.CassandraClient
 import org.apache.spark.SparkContext
-import org.junit.{After, Before,Test}
+import org.junit.{After, Before, Test}
 import org.scalatest.junit.AssertionsForJUnit
 //TODO test thoroughly
 //TODO find good hyper parameters
@@ -16,7 +18,8 @@ class PlagiarismFinderTest extends AssertionsForJUnit {
 
     val sparkConf=cassandraParameters.toSparkConf("[Wikiplag] Plagiarism finder")
     sc = new SparkContext(sparkConf)
-    finder = new PlagiarismFinder(sc,cassandraParameters)
+    val cassandraClient=new CassandraClient(sc,cassandraParameters)
+    finder = new PlagiarismFinder(cassandraClient)
   }
   @After def tearDown(){
     sc.stop()
