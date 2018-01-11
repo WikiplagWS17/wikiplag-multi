@@ -2,6 +2,7 @@ package de.htwberlin.f4.wikiplag.rest.servlets
 
 import de.htwberlin.f4.wikiplag.plagiarism.models.HyperParameters
 import de.htwberlin.f4.wikiplag.plagiarism.{PlagiarismFinder, WikiExcerptBuilder}
+import de.htwberlin.f4.wikiplag.plagiarism.models.WikiExcerpt
 import de.htwberlin.f4.wikiplag.rest.Text
 import de.htwberlin.f4.wikiplag.utils.CassandraParameters
 import de.htwberlin.f4.wikiplag.utils.database.CassandraClient
@@ -10,13 +11,16 @@ import org.json4s.{DefaultFormats, Formats}
 import org.scalatra._
 import org.scalatra.json._
 
-class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
+
+class WikiplagServlet extends ScalatraServlet  with JacksonJsonSupport {
 
   protected implicit val jsonFormats: Formats = DefaultFormats
 
   private val separator: String = System.getProperty("file.separator")
 
   private var cassaandraClient: CassandraClient = _
+
+  private var saveJson: Vector[WikiExcerpt] = _
 
   override def init(): Unit = {
     println("in init")
@@ -26,6 +30,8 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     var sparkContext = new SparkContext(conf)
 
     cassaandraClient = new CassandraClient(sparkContext, cassandraParameter)
+
+    
   }
 
   before() {}
@@ -50,6 +56,11 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     }
   }
 
+  get("/test") {
+    contentType = formats("json")
+    saveJson
+  }
+
   /*
   * plagiarism path
   */
@@ -57,14 +68,21 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     println("post /wikiplag/analyse")
     contentType = formats("json")
     try {
+      val jsonString = request.body
+      val jValue = parse(jsonString)
+      val text_obj = jValue.extract[Text]
+      println(text_obj.text)
       // read json input file and convert to Text object
-      val text_obj = parsedBody.extract[Text]
+      //val text_obj = parsedBody.extract[Text]
       val result = new PlagiarismFinder(cassaandraClient).findPlagiarisms(text_obj.text, new HyperParameters())
       val resultW = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(result, 3)
-
+      println(resultW)
+      saveJson = resultW
       resultW
     } catch {
-      case e: org.json4s.MappingException => halt(400, "Malformed JSON")
+      case e: org.json4s.MappingException =>
+        println("Malformed JSON")
+        halt(400, "Malformed JSON")
       case e: Exception =>
         e.printStackTrace()
         halt(500, "Internal Server Error")
