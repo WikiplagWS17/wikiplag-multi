@@ -3,6 +3,7 @@ package de.htwberlin.f4.wikiplag.rest.servlets
 import de.htwberlin.f4.wikiplag.plagiarism.models.HyperParameters
 import de.htwberlin.f4.wikiplag.plagiarism.{PlagiarismFinder, WikiExcerptBuilder}
 import de.htwberlin.f4.wikiplag.rest.Text
+import de.htwberlin.f4.wikiplag.rest.models.RestApiPostResponseModel
 import de.htwberlin.f4.wikiplag.utils.CassandraParameters
 import de.htwberlin.f4.wikiplag.utils.database.CassandraClient
 import org.apache.spark.SparkContext
@@ -58,11 +59,13 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     contentType = formats("json")
     try {
       // read json input file and convert to Text object
-      val text_obj = parsedBody.extract[Text]
-      val result = new PlagiarismFinder(cassaandraClient).findPlagiarisms(text_obj.text, new HyperParameters())
-      val resultW = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(result, 3)
+      val textObject = parsedBody.extract[Text]
+      val plagiarism = new PlagiarismFinder(cassaandraClient).findPlagiarisms(textObject.text, new HyperParameters())
+      val plagiarismExcrepts = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(plagiarism, 3)
 
-      resultW
+      val result  = new RestApiPostResponseModel(plagiarismExcrepts)
+      result.InitTaggedInputTextFromRawText(textObject.text)
+      result
     } catch {
       case e: org.json4s.MappingException => halt(400, "Malformed JSON")
       case e: Exception =>
