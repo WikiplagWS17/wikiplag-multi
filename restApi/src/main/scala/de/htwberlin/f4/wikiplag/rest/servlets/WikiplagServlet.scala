@@ -19,6 +19,9 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
 
   private var cassaandraClient: CassandraClient = _
 
+  // for testing webapp
+  private var saveJson: RestApiPostResponseModel = _
+
   override def init(): Unit = {
     println("in init")
 
@@ -52,6 +55,14 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
   }
 
   /*
+   * for testing webapp
+  */
+  get("/test") {
+    contentType = formats("json")
+     saveJson
+     }
+
+  /*
   * plagiarism path
   */
   post("/analyse") {
@@ -59,12 +70,18 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     contentType = formats("json")
     try {
       // read json input file and convert to Text object
-      val textObject = parsedBody.extract[Text]
+      val jsonString = request.body
+      val jValue = parse(jsonString)
+      val textObject = jValue.extract[Text]
       val plagiarism = new PlagiarismFinder(cassaandraClient).findPlagiarisms(textObject.text, new HyperParameters())
       val plagiarismExcrepts = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(plagiarism, 3)
 
       val result  = new RestApiPostResponseModel(plagiarismExcrepts)
       result.InitTaggedInputTextFromRawText(textObject.text)
+
+      // for testing webapp
+      saveJson = result
+
       result
     } catch {
       case e: org.json4s.MappingException => halt(400, "Malformed JSON")
