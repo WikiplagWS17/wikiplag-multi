@@ -10,7 +10,7 @@ package de.htwberlin.f4.wikiplag.plagiarism.models
   *
   */
 @SerialVersionUID(1)
-class WikiExcerpt(val title: String, val start: Int, val end: Int, val excerpt: String) extends Serializable {
+class WikiExcerpt(val title: String,val id:Int, val start: Int, val end: Int, val excerpt: String) extends Serializable {
 
-  override def toString = s"WikiExcerpt(title=$title, start=$start, end=$end, excerpt=$excerpt)"
+  override def toString = s"WikiExcerpt(title=$title, start=$start, end=$end, excerpt=$excerpt,id=$id)"
 }
