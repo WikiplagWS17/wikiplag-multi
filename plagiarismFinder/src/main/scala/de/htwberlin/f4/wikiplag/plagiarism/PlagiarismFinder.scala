@@ -17,7 +17,7 @@ import scala.collection.mutable
   * A class for determining if a given text has parts which are potential wikipedia plagiarisms.
   * @constructor Creates a new instance.
   * @param cassandraClient the cassandra client
-  * @param n the n used to build the n-grams
+  * @param n               the n used to build the n-grams
   *
   **/
 class PlagiarismFinder(val cassandraClient: CassandraClient, n: Int = 4) {
@@ -82,7 +82,10 @@ class PlagiarismFinder(val cassandraClient: CassandraClient, n: Int = 4) {
       map(entry => (entry._1, findPlagiarismCandidates(entry._2, hyperParameters))).toMap
 
     //filter out empty matches
-    sentenceAndMatches.filter(x => x._2.nonEmpty)
+    val filtered = sentenceAndMatches.filter(x => x._2.nonEmpty)
+
+    //merge adjacent matches
+    MatchesMerger.mergeMatches(filtered)
   }
 
   /**
