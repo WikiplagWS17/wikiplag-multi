@@ -13,7 +13,7 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
     * @param plagiarismCandidates the result of the [[PlagiarismFinder.findPlagiarisms()]] Method
     * @param n                    number of words to include before and after plagiarism
     * */
-  def buildWikiExcerpts(plagiarismCandidates: Map[TextPosition, List[(Vector[String], Int)]], n: Int): List[WikiPlagiarism] = {
+  private def buildWikiExcerpts(plagiarismCandidates: Map[TextPosition, List[(Vector[String], Int)]], n: Int): List[WikiPlagiarism] = {
 
     var docIds = plagiarismCandidates.values.flatten.map(_._2)
     var documentsMap = cassandraClient.queryArticlesAsMap(docIds)
@@ -47,7 +47,28 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
     * @return a tuple of (n-words before, plagiarism, n-words after)
     * */
   //TODO. n can be the just whitespaced tokens before and after or even just characters
-  private def findExactWikipediaExcerpt(tokenizedMatch: Vector[String], wikiText: String, n: Int): Tuple3[String, String, String] = {
-    ("", tokenizedMatch.mkString(" "), "")
+  def findExactWikipediaExcerpt(tokenizedMatch: Vector[String], wikiText: String, n: Int): Tuple3[String, String, String] = {
+    //produce list from input text string
+    val wikiTextList = wikiText.split(" ")
+    //TODO remove punctuation
+    val matchstart = tokenizedMatch(0)
+    val matchend = tokenizedMatch.last
+    val matchdist = tokenizedMatch.size
+
+    //get positions of first and last element of tokenized match
+    val startpositions = wikiTextList.zipWithIndex.filter(x => x._1 == matchstart).map(_._2)
+    val endpositions = wikiTextList.zipWithIndex.filter(x => x._1 == matchend).map(_._2)
+
+    //produce triples (startposition, endposition, distance) of possible candidates
+    //distance must be larger than the size of tokenized match vector to be a possible excerpt
+    val positionpairs = startpositions.flatMap(x => endpositions.filter(_ > x).map(y => (x, y, y-x+1))).filter(_._3 >= matchdist).sortWith(_._3 > _._3)
+    val wikiTextPositions = positionpairs.last
+
+    val wikiTextBefore = wikiTextList.slice(wikiTextPositions._1 - n , wikiTextPositions._1).mkString(" ")
+    val wikiTextExcerpt = wikiTextList.slice(wikiTextPositions._1, wikiTextPositions._2).mkString(" ")
+    val wikiTextAfter = wikiTextList.slice(wikiTextPositions._2, wikiTextPositions._2 + n).mkString(" ")
+
+
+    (wikiTextBefore, wikiTextExcerpt, wikiTextAfter)
   }
 }
