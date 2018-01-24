@@ -47,9 +47,10 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
     * @return a tuple of (n-words before, plagiarism, n-words after)
     * */
   //TODO. n can be the just whitespaced tokens before and after or even just characters
-  private def findExactWikipediaExcerpt(tokenizedMatch: Vector[String], wikiText: String, n: Int): Tuple3[String, String, String] = {
-    //produce list from input text string and removes punctuation
-    val wikiTextList = wikiText.split("[ !.?:,]").map(x=>x.replace("[.!?:,]",""))
+  def findExactWikipediaExcerpt(tokenizedMatch: Vector[String], wikiText: String, n: Int): Tuple3[String, String, String] = {
+    //produce list from input text string
+    val wikiTextList = wikiText.split(" ")
+    //TODO remove punctuation
     val matchstart = tokenizedMatch(0)
     val matchend = tokenizedMatch.last
     val matchdist = tokenizedMatch.size
