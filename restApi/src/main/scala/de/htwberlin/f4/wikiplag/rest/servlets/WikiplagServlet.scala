@@ -19,6 +19,8 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
 
   private var cassaandraClient: CassandraClient = _
 
+  private var plagiarismFinder: PlagiarismFinder= _
+
   // for testing webapp
   private var saveJson: RestApiPostResponseModel = _
 
@@ -30,9 +32,13 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     var sparkContext = new SparkContext(conf)
 
     cassaandraClient = new CassandraClient(sparkContext, cassandraParameter)
+    plagiarismFinder=new PlagiarismFinder(cassaandraClient)
   }
 
-  before() {}
+  before() {
+    //allow cors from all sources
+    response.setHeader("Access-Control-Allow-Origin", "*")
+  }
   /*
 	 * document path
 	 */
@@ -73,7 +79,7 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
       val jsonString = request.body
       val jValue = parse(jsonString)
       val textObject = jValue.extract[Text]
-      val plagiarism = new PlagiarismFinder(cassaandraClient).findPlagiarisms(textObject.text, new HyperParameters())
+      val plagiarism = plagiarismFinder.findPlagiarisms(textObject.text, new HyperParameters())
       val plagiarismExcrepts = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(plagiarism,N_CHARS_BEFORE_AND_AFTER )
 
       val result  = RestApiPostResponseModel(plagiarismExcrepts)
