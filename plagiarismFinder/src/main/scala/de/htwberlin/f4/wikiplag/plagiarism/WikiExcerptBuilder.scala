@@ -14,6 +14,8 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
     **/
   def buildWikiExcerpts(plagiarismCandidates: Map[TextPosition, List[(Vector[String], Int)]], n: Int): List[WikiPlagiarism] = {
 
+    if(plagiarismCandidates.isEmpty)
+      return List.empty[WikiPlagiarism]
     var docIds = plagiarismCandidates.values.flatten.map(_._2)
     var documentsMap = cassandraClient.queryArticlesAsMap(docIds)
 
