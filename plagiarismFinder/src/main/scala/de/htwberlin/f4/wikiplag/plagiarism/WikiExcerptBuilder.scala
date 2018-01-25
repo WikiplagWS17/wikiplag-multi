@@ -11,7 +11,7 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
     *
     * @param plagiarismCandidates the result of the [[PlagiarismFinder.findPlagiarisms()]] Method
     * @param n                    number of words to include before and after plagiarism
-    * */
+    **/
   def buildWikiExcerpts(plagiarismCandidates: Map[TextPosition, List[(Vector[String], Int)]], n: Int): List[WikiPlagiarism] = {
 
     var docIds = plagiarismCandidates.values.flatten.map(_._2)
@@ -34,7 +34,8 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
 
   private def buildDisplayExcrept(before: String, plagiarism: String, after: String): String = {
     //specifying the span class in the rest api is absolutely disgusting..
-    var span ="""<span class="wiki_plag">"""
+    var span =
+      """<span class="wiki_plag">"""
     s"[...] $before$span$plagiarism</span>$after [...]"
   }
 
@@ -44,7 +45,7 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
     * @param wikiText       the wikipedia article from which the tokenized match originated
     * @param n              number of characters before and after the plagiarism text
     * @return a tuple of (n-words before, plagiarism, n-words after)
-    * */
+    **/
   def findExactWikipediaExcerpt(tokenizedMatch: Vector[String], wikiText: String, n: Int): Tuple3[String, String, String] = {
     try {
       findExactWikipediaExcerptOrThrow(tokenizedMatch, wikiText, n)
@@ -59,14 +60,16 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
   private def findExactWikipediaExcerptOrThrow(tokenizedMatch: Vector[String], wikiText: String, n: Int): Tuple3[String, String, String] = {
     val wikiTextLower = wikiText.toLowerCase
     //find all positions of each word and remove those with no results
-    val nonEmptyOrderedTokensPositions = tokenizedMatch.map(x => Functions.allIndicesOf(wikiTextLower, x)).filter(_.nonEmpty).toList
+    val nonEmptyOrderedTokensPositionsWithTokens = tokenizedMatch.map(x => (x, Functions.allIndicesOf(wikiTextLower, x))).filter(_._2.nonEmpty).toList
 
     //less than two words have been found, throw an exception
-    if (nonEmptyOrderedTokensPositions.size < 2)
+    if (nonEmptyOrderedTokensPositionsWithTokens.size < 2)
       throw new NoSuchElementException("Less than 2 tokens were found.")
 
-    val firstWordPositions = nonEmptyOrderedTokensPositions.head
-    val otherWordsPositions = nonEmptyOrderedTokensPositions.tail
+    val firstWordPositions = nonEmptyOrderedTokensPositionsWithTokens.head._2
+    //add the length of the word to get the position of the end of the word, not the start
+    val otherWordsPositions = nonEmptyOrderedTokensPositionsWithTokens.tail.map(
+      positionTokenPair => positionTokenPair._2.map(position => position + positionTokenPair._1.length))
 
     //build start,end, count of words founds tuples
     val startEndPositionCountTuples = firstWordPositions.map(startingPosition => {
