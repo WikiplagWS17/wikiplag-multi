@@ -2,8 +2,7 @@ package de.htwberlin.f4.wikiplag.rest.servlets
 
 import de.htwberlin.f4.wikiplag.plagiarism.models.HyperParameters
 import de.htwberlin.f4.wikiplag.plagiarism.{PlagiarismFinder, WikiExcerptBuilder}
-import de.htwberlin.f4.wikiplag.rest.Text
-import de.htwberlin.f4.wikiplag.rest.models.RestApiPostResponseModel
+import de.htwberlin.f4.wikiplag.rest.models.{RestApiPostResponseModel, Text}
 import de.htwberlin.f4.wikiplag.utils.CassandraParameters
 import de.htwberlin.f4.wikiplag.utils.database.CassandraClient
 import org.apache.spark.SparkContext
@@ -16,6 +15,7 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
   protected implicit val jsonFormats: Formats = DefaultFormats
 
   private val separator: String = System.getProperty("file.separator")
+  private val N_CHARS_BEFORE_AND_AFTER=20
 
   private var cassaandraClient: CassandraClient = _
 
@@ -74,9 +74,9 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
       val jValue = parse(jsonString)
       val textObject = jValue.extract[Text]
       val plagiarism = new PlagiarismFinder(cassaandraClient).findPlagiarisms(textObject.text, new HyperParameters())
-      val plagiarismExcrepts = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(plagiarism, 3)
+      val plagiarismExcrepts = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(plagiarism,N_CHARS_BEFORE_AND_AFTER )
 
-      val result  = new RestApiPostResponseModel(plagiarismExcrepts)
+      val result  = RestApiPostResponseModel(plagiarismExcrepts)
       result.InitTaggedInputTextFromRawText(textObject.text)
 
       // for testing webapp
