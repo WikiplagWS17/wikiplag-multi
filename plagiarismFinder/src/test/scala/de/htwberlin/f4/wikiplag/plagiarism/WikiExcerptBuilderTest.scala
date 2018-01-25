@@ -31,8 +31,7 @@ class WikiExcerptBuilderTest extends AssertionsForJUnit {
   @Test def testExcerpt(): Unit = {
     val input = raw"Daniel Stenberg, der Programmierer von cURL, begann 1997 ein Programm zu schreiben, das IRC-Teilnehmern Daten über Wechselkurse zur Verfügung stellen sollte, welche von Webseiten abgerufen werden mussten. Er setzte dabei auf das vorhandene Open-Source-Tool httpget. Nach einer Erweiterung um andere Protokolle wurde das Programm am 20. März 1998 als cURL 4 erstmals veröffentlicht. Ursprünglich stand der Name für und wurde erst später vom Stenberg nach einem besseren Vorschlag zum aktuellen Backronym umgedeutet.[2] URL"
     val matches = finder.findPlagiarisms(input, new HyperParameters())
-    //TODO THROWS EXCEPTION
-    val wikiExcerpt = excerptBuilder.buildWikiExcerpts(matches, 3)
+    val wikiExcerpt = excerptBuilder.buildWikiExcerpts(matches, 15)
 
     println(wikiExcerpt.size)
     println(wikiExcerpt)
@@ -49,7 +48,6 @@ class WikiExcerptBuilderTest extends AssertionsForJUnit {
 
     //find plagiarisms using default hyper parameters
     val matches = finder.findPlagiarisms(input + input2, new HyperParameters())
-    //TODO THROWS EXCEPTION
     val wikiExcerpt = excerptBuilder.buildWikiExcerpts(matches, 3)
 
     println(wikiExcerpt.size)
@@ -64,7 +62,6 @@ class WikiExcerptBuilderTest extends AssertionsForJUnit {
   @Test def testExcerpt2(): Unit = {
     val input = raw"Und der wwfawf werwe für einen fiktiven Regisseur der Filme verantwortet, bei denen der eigentliche Regisseur seinen Namen nicht Kontaktenfrom. zuletzt', weil Arthur  Hiller  der eigentliche  regisseur "
     val matches = finder.findPlagiarisms(input, new HyperParameters())
-    //TODO THROWS EXCEPTION
     val wikiExcerpt = excerptBuilder.buildWikiExcerpts(matches, 3)
 
     println(wikiExcerpt.size)

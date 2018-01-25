@@ -6,11 +6,4 @@ import org.scalatest.FunSuiteLike
 
 class WikiplagServletTests extends ScalatraSuite with FunSuiteLike {
 
-  addServlet(classOf[WikiplagServlet], "/*")
-
-  test("GET / on WikiplagServlet should return status 200"){
-    get("/"){
-      status should equal (200)
-    }
-  }
 }
