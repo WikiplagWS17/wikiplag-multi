@@ -17,7 +17,7 @@ case class RestApiPostResponseModel(var plags: List[WikiPlagiarism],var tagged_i
 
       var startEndPositionsLists = plags.flatMap(x=>x.wiki_excerpts).map(x => (x.start, x.end)).unzip
       //concatenate them
-      var plagIndices = (startEndPositionsLists._1 ::: startEndPositionsLists._2).sorted
+      var plagIndices = (startEndPositionsLists._1 ::: startEndPositionsLists._2).distinct.sorted
 
       var rawTextSplit = Functions.SplitByMultipleIndices(plagIndices, rawText)
 
