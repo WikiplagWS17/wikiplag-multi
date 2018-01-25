@@ -88,8 +88,11 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
       (startingPosition, endPositionWithNumberOfWordsFound._1, endPositionWithNumberOfWordsFound._2)
     })
 
-    //get the one with the most found words
-    val best = startEndPositionCountTuples.maxBy(x => x._3)
+
+    //get the maximum number of words found
+    val maxWordsCounds=startEndPositionCountTuples.map(x=>x._3).max
+    //from the result having the max number of word get the result with the smallest length from start to end
+    val best = startEndPositionCountTuples.filter(x => x._3 == maxWordsCounds).minBy(x=>x._2-x._1)
 
     //if it has 0 words throw an exception
     if (best._3 == 0)
