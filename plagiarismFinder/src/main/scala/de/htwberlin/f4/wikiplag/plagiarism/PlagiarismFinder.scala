@@ -26,6 +26,9 @@ class PlagiarismFinder(val cassandraClient: CassandraClient, n: Int = 4) {
   def findPlagiarisms(rawText: String, hyperParameters: HyperParameters): Map[TextPosition, List[(Vector[String], Int)]] = {
     var potentialPlagiarimsAsDatabasePositions = findPlagiarismsDatabasePositions(rawText, hyperParameters)
 
+    if(potentialPlagiarimsAsDatabasePositions.isEmpty)
+      return Map.empty[TextPosition, List[(Vector[String], Int)]]
+
     val docIds = potentialPlagiarimsAsDatabasePositions.flatMap(x => x._2).map(x => x.docId).toList
     val docIdsToDocsMap = cassandraClient.queryDocIdsTokensAsMap(docIds)
 
