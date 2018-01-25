@@ -120,8 +120,6 @@ lazy val restApi = (project in file("restApi"))
     commonSettings,
     name := "WikiPlagRestAPI",
     libraryDependencies ++= testDependencies,
-    //TODO @Anton remove spark and cass dependencies if not used by Max
-    //libraryDependencies ++=sparkDependencies,
     libraryDependencies ++= sparkDependencies_compile,
     libraryDependencies ++= cassandraDependencies,
     libraryDependencies ++= Seq(
@@ -134,8 +132,7 @@ lazy val restApi = (project in file("restApi"))
       "javax.servlet" % "javax.servlet-api" % "3.1.0" % "provided",
       "org.scalatra" %% "scalatra-json" % ScalatraVersion,
       //library used for json conversion
-      "org.json4s" %% "json4s-jackson" % "3.5.2",
-      "com.sun.jersey" % "jersey-server" % "1.2",
+      "org.json4s" %% "json4s-jackson" % "3.5.2"
       //add further required dependencies here
 
     ),

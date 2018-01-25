@@ -1,6 +1,7 @@
 package de.htwberlin.f4.wikiplag.rest.models
 
 import de.htwberlin.f4.wikiplag.plagiarism.models.{WikiExcerpt, WikiPlagiarism}
+import de.htwberlin.f4.wikiplag.utils.Functions
 
 /** transform to mock.json format */
 @SerialVersionUID(1)
@@ -18,9 +19,9 @@ case class RestApiPostResponseModel(var plags: List[WikiPlagiarism],var tagged_i
       //concatenate them
       var plagIndices = (startEndPositionsLists._1 ::: startEndPositionsLists._2).sorted
 
-      var rawTextSplit = SplitByMultipleIndices(plagIndices, rawText)
+      var rawTextSplit = Functions.SplitByMultipleIndices(plagIndices, rawText)
 
-      var span =""" <span class="input_plag" id="%d" > %s </span>""""
+      var span ="""<span id="%d" class="input_plag">%s</span>"""
 
       tagged_input_text= rawTextSplit.zipWithIndex.map(x => {
         //odd ones are plagiarisms
@@ -33,5 +34,4 @@ case class RestApiPostResponseModel(var plags: List[WikiPlagiarism],var tagged_i
     }
   }
 
-  private def SplitByMultipleIndices(indices: List[Int], s: String) = (indices zip indices.tail) map { case (a, b) => s.substring(a, b) }
-}
+  }
