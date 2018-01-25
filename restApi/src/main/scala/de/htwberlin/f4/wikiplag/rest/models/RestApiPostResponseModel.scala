@@ -20,7 +20,7 @@ case class RestApiPostResponseModel(var plags: List[WikiPlagiarism],var tagged_i
 
       var rawTextSplit = SplitByMultipleIndices(plagIndices, rawText)
 
-      var span =""" <span class="input_plag" id="%d" > %s <span>""""
+      var span =""" <span class="input_plag" id="%d" > %s </span>""""
 
       tagged_input_text= rawTextSplit.zipWithIndex.map(x => {
         //odd ones are plagiarisms

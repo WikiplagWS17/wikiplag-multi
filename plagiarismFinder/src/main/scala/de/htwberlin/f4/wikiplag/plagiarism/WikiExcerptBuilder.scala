@@ -13,7 +13,7 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
     * @param plagiarismCandidates the result of the [[PlagiarismFinder.findPlagiarisms()]] Method
     * @param n                    number of words to include before and after plagiarism
     * */
-  private def buildWikiExcerpts(plagiarismCandidates: Map[TextPosition, List[(Vector[String], Int)]], n: Int): List[WikiPlagiarism] = {
+  def buildWikiExcerpts(plagiarismCandidates: Map[TextPosition, List[(Vector[String], Int)]], n: Int): List[WikiPlagiarism] = {
 
     var docIds = plagiarismCandidates.values.flatten.map(_._2)
     var documentsMap = cassandraClient.queryArticlesAsMap(docIds)
@@ -48,7 +48,8 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
     * */
   //TODO. n can be the just whitespaced tokens before and after or even just characters
   def findExactWikipediaExcerpt(tokenizedMatch: Vector[String], wikiText: String, n: Int): Tuple3[String, String, String] = {
-    //produce list from input text string
+/*    
+//produce list from input text string
     val wikiTextList = wikiText.split(" ")
     //TODO remove punctuation
     val matchstart = tokenizedMatch(0)
@@ -70,5 +71,6 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
 
 
     (wikiTextBefore, wikiTextExcerpt, wikiTextAfter)
-  }
+*/
+    ("",tokenizedMatch.mkString(" "),"")  }
 }
