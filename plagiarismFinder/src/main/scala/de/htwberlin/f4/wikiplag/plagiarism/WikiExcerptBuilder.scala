@@ -75,7 +75,7 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
     val startEndPositionCountTuples = firstWordPositions.map(startingPosition => {
       val endPositionWithNumberOfWordsFound = otherWordsPositions.foldLeft(startingPosition, 0) {
         (accumulator, current) => {
-          val previousPosition = accumulator._2
+          val previousPosition = accumulator._1
           val closestPositionToPrevious = current.find(_ > previousPosition)
           //no position exists which are after the previous one,
           // continue with the next query word without modifying the positions
@@ -100,10 +100,10 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
     //clip to avoid out of bounds exceptions
     val beforeStartPosition = math.max(plagStartPosition - n, 0)
     val afterEndPosition = math.min(plagEndPosition + n, wikiText.length - 1)
-
-    val before = wikiText.slice(beforeStartPosition, plagStartPosition)
-    val plag = wikiText.slice(plagStartPosition, plagEndPosition)
-    val after = wikiText.slice(plagEndPosition, afterEndPosition)
+    
+    val before = wikiText.slice(beforeStartPosition, plagStartPosition).replace("\n","")
+    val plag = wikiText.slice(plagStartPosition, plagEndPosition).replace("\n","")
+    val after = wikiText.slice(plagEndPosition, afterEndPosition).replace("\n","")
 
     (before, plag, after)
   }
