@@ -11,37 +11,61 @@ object MatchesMerger {
     if (mathes.isEmpty)
       return mathes
 
+
+    var counter = 0
     //sorted in ascending order by text position
     mathes.toSeq.sortBy(x => x._1.start).foldLeft(new mutable.Stack[(TextPosition, List[Match])]) {
       (accumulator, current) => {
+        counter = counter + 1
+
         if (accumulator.isEmpty)
           accumulator.push(current)
         else {
-          var topPosition = accumulator.top._1
-          var currentPosition = current._1
-          //if directly following each other merge
+          val topPosition = accumulator.top._1
+          val currentPosition = current._1
+          //if directly following each other consider merging
           if (topPosition.end + 1 == currentPosition.start) {
-            var previousMatches = accumulator.top._2
-            accumulator.pop
-
-            var currentMatches = current._2
-            accumulator.push((new TextPosition(topPosition.start, currentPosition.end), mergeMatchesIfNecessary(previousMatches ::: currentMatches)))
-          } else {
+            val previousMatches = accumulator.top._2
+            val currentMatches = current._2
+            val merged = mergeMatchesIfNecessary(previousMatches ::: currentMatches)
+            val mergedAtleastOnce = merged._2
+            //if atleast one match pair was merged, merge otherwise just push the current one
+            if (mergedAtleastOnce) {
+              accumulator.pop
+              accumulator.push((new TextPosition(topPosition.start, currentPosition.end), merged._1))
+            }
+            else
+            //no merges in the wikipedia positions, just push
+              accumulator.push(current)
+          } else
+          //not following directly, just push
             accumulator.push(current)
-          }
         }
       }
     }.toMap
   }
 
-  def mergeMatchesIfNecessary(matches: List[Match]): List[Match] = {
-    matches.groupBy(x => x.docId).
-      flatMap(m => mergePositionsNextToEachOther(m._2.map(x => x.positon)).map(position => new Match(position, m._1)))
-      .toList
+  def mergeMatchesIfNecessary(matches: List[Match]): (List[Match], Boolean) = {
+    var mergedAtleastOnce = false
+    val mergedMatches = matches.groupBy(m => m.docId).flatMap(m => {
+      val positions = m._2.map(x => x.positon)
+      val mergedPositions = mergePositionsNextToEachOther(positions)
+      val anyMerged = mergedPositions._2
+      if (anyMerged) {
+        mergedAtleastOnce = true
+        val docId = m._1
+        val resultMatches = mergedPositions._1.map(position => new Match(position, docId))
+        resultMatches
+      } else {
+        m._2
+      }
+    }).toList
+    (mergedMatches, mergedAtleastOnce)
   }
 
-  def mergePositionsNextToEachOther(list: List[TextPosition]): List[TextPosition] = {
-    list.sortBy(x => x.start).foldLeft(new mutable.Stack[(TextPosition)]) {
+  def mergePositionsNextToEachOther(list: List[TextPosition]): (List[TextPosition], Boolean) = {
+    var mergedAtleastOnce = false
+    var merged = list.sortBy(x => x.start).foldLeft(new mutable.Stack[(TextPosition)]) {
       (accumulator, current) => {
         if (accumulator.isEmpty)
           accumulator.push(current)
@@ -50,6 +74,7 @@ object MatchesMerger {
           //if close next to each other merge
           if (Math.abs(top.end + 1 - current.start) < 10) {
             accumulator.pop
+            mergedAtleastOnce = true
             accumulator.push(new TextPosition(top.start, current.end))
           } else {
             accumulator.push(current)
@@ -57,5 +82,6 @@ object MatchesMerger {
         }
       }
     }.toList
+    (merged, mergedAtleastOnce)
   }
 }
