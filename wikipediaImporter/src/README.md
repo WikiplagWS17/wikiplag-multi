@@ -76,7 +76,7 @@ Tokenized table:
 ```cql
 CREATE TABLE <tablename>(
 		  docid int PRIMARY KEY,
-		  tokens frozen<List<int>>
+		  tokens frozen<List<text>>
 		  ) WITH COMPACT STORAGE;
 ```
 
@@ -86,7 +86,7 @@ Inverse-index table:
 CREATE TABLE <tablename>(
 		  ngram_hash bigint,
 		  docid int,
-		  occurrences frozen<list<text>>,
+		  occurrences frozen<list<int>>,
 		  PRIMARY KEY(ngram_hash, docid)
 		  ) WITH COMPACT STORAGE;
 ```
