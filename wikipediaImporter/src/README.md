@@ -86,7 +86,7 @@ Inverse-index table:
 CREATE TABLE <tablename>(
 		  ngram_hash bigint,
 		  docid int,
-		  occurrences frozen<list<int>>,
+		  occurrences frozen<list<text>>,
 		  PRIMARY KEY(ngram_hash, docid)
 		  ) WITH COMPACT STORAGE;
 ```
