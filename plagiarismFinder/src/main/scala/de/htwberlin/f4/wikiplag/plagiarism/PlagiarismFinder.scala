@@ -7,6 +7,7 @@ import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable
 import de.htwberlin.f4.wikiplag.utils.inverseindex.{InverseIndexBuilderImpl, InverseIndexHashing, StopWords}
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 /**
   * @author
@@ -58,10 +59,16 @@ class PlagiarismFinder(val cassandraClient: CassandraClient, n: Int = 4) {
     val inputAsRawSentences = rawText.split("[.,!?]")
 
     //get the positions
-    var positions = inputAsRawSentences.map(x => {
-      val start = rawText.indexOf(x)
-      new TextPosition(start, start + x.length)
-    })
+    var positions=inputAsRawSentences.foldLeft(ListBuffer.empty[TextPosition],0){
+      (accumulator,sentence)=>{
+        val previousEnd=accumulator._2
+        val listBuffer=accumulator._1
+        val start=rawText.indexOf(sentence,previousEnd)
+        val end=start+sentence.length
+        listBuffer.append(new TextPosition(start,end))
+        (listBuffer,end)
+      }
+    }._1.toArray
 
     //split into tokens using the inverse index builder
     val sentencesTokenized = inputAsRawSentences.

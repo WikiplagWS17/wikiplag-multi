@@ -12,11 +12,9 @@ object MatchesMerger {
       return mathes
 
 
-    var counter = 0
     //sorted in ascending order by text position
     mathes.toSeq.sortBy(x => x._1.start).foldLeft(new mutable.Stack[(TextPosition, List[Match])]) {
       (accumulator, current) => {
-        counter = counter + 1
 
         if (accumulator.isEmpty)
           accumulator.push(current)
@@ -72,7 +70,7 @@ object MatchesMerger {
         else {
           var top = accumulator.top
           //if close next to each other merge
-          if (Math.abs(top.end + 1 - current.start) < 10) {
+          if (((top.end + 1 - current.start) < 20) && (top.end + 1 - current.start) < 20) {
             accumulator.pop
             mergedAtleastOnce = true
             accumulator.push(new TextPosition(top.start, current.end))
