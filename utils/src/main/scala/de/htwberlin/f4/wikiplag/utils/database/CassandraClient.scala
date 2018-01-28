@@ -50,10 +50,10 @@ class CassandraClient(sc: SparkContext, cassandraParameters: CassandraParameters
 
   def queryDocIdsTokens(docIds: List[Int]): CassandraTableScanRDD[CassandraRow] = {
     if (docIds == null || docIds.isEmpty)
-      throw new IllegalArgumentException("docIds")
+      throw new IllegalArgumentException("docIds is null or empty")
     val df = sc.cassandraTable(cassandraParameters.keyspace, cassandraParameters.tokenizedTable)
 
-    val result = df.select(TokenizedTable.DocId, TokenizedTable.Tokens).where(TokenizedTable.DocId + " in ?", docIds)
+    val result = df.select(TokenizedTable.DocId, TokenizedTable.Tokens).where(TokenizedTable.DocId + " in ?", docIds.toSet)
     result
   }
 
@@ -64,10 +64,10 @@ class CassandraClient(sc: SparkContext, cassandraParameters: CassandraParameters
 
   def queryArticles(docIds: Iterable[Int]): CassandraTableScanRDD[CassandraRow] = {
     if (docIds == null || docIds.isEmpty)
-      throw new IllegalArgumentException("docIds")
+      throw new IllegalArgumentException("docIds is null or empty.")
     val df = sc.cassandraTable(cassandraParameters.keyspace, cassandraParameters.articlesTable)
 
-    val result = df.select(ArticlesTable.DocId, ArticlesTable.WikiText,ArticlesTable.Title).where(ArticlesTable.DocId + " in ?", docIds)
+    val result = df.select(ArticlesTable.DocId, ArticlesTable.WikiText,ArticlesTable.Title).where(ArticlesTable.DocId + " in ?", docIds.toSet)
     result
   }
 }

@@ -7,6 +7,7 @@ import de.htwberlin.f4.wikiplag.utils.database.tables.InverseIndexTable
 import de.htwberlin.f4.wikiplag.utils.inverseindex.{InverseIndexBuilderImpl, InverseIndexHashing, StopWords}
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 /**
   * @author
@@ -51,17 +52,22 @@ class PlagiarismFinder(val cassandraClient: CassandraClient, n: Int = 4) {
     * @param hyperParameters the hyper parameters
     * @return a map of positions in the original text to matches
     **/
-  //TODO potential improvement- query database once instead of per sentence
   private def findPlagiarismsDatabasePositions(rawText: String, hyperParameters: HyperParameters): Map[TextPosition, List[Match]] = {
 
     //split into sentences
     val inputAsRawSentences = rawText.split("[.,!?]")
 
     //get the positions
-    var positions = inputAsRawSentences.map(x => {
-      val start = rawText.indexOf(x)
-      new TextPosition(start, start + x.length)
-    })
+    var positions=inputAsRawSentences.foldLeft(ListBuffer.empty[TextPosition],0){
+      (accumulator,sentence)=>{
+        val previousEnd=accumulator._2
+        val listBuffer=accumulator._1
+        val start=rawText.indexOf(sentence,previousEnd)
+        val end=start+sentence.length
+        listBuffer.append(new TextPosition(start,end))
+        (listBuffer,end)
+      }
+    }._1.toArray
 
     //split into tokens using the inverse index builder
     val sentencesTokenized = inputAsRawSentences.
@@ -80,9 +86,12 @@ class PlagiarismFinder(val cassandraClient: CassandraClient, n: Int = 4) {
     //while debugging uncomment this to see the values as n-grams isntead of n-gram hashes
     //val tmp = mergedSentences.map(entry => entry.filterNot(x => StopWords.stopWords.contains(x)).sliding(n).filter(_.size==n).map(x => x).toList)
 
+    //get all hashes from the database in a single query
+    val nGramHashesFromDatabase=cassandraClient.queryNGramHashesAsArray(ngramsBySentence.flatten)
+
     //check each sentence for plagiarisms
     val sentenceAndMatches = positions.zip(ngramsBySentence).
-      map(entry => (entry._1, findPlagiarismCandidates(entry._2, hyperParameters))).toMap
+      map(entry => (entry._1, findPlagiarismCandidates(entry._2, hyperParameters,nGramHashesFromDatabase))).toMap
 
     //filter out empty matches
     val filtered = sentenceAndMatches.filter(x => x._2.nonEmpty)
@@ -143,12 +152,15 @@ class PlagiarismFinder(val cassandraClient: CassandraClient, n: Int = 4) {
     * @return A List of [[Match]]. If there were no matches the list will be empty and the sentence is not a plagiarism.
     *
     **/
-  private def findPlagiarismCandidates(ngram_hashes: List[Long], hyperParameters: HyperParameters): List[Match] = {
+  private def findPlagiarismCandidates(ngram_hashes: List[Long], hyperParameters: HyperParameters,nGramHashesFromDatabase:Array[CassandraRow]): List[Match] = {
     if (ngram_hashes == null || ngram_hashes.isEmpty)
       return List.empty[Match]
 
-    //query the database to get the n-gram hashes
-    val result = cassandraClient.queryNGramHashesAsArray(ngram_hashes)
+    //fetch only the relevant ones to the current sentence
+    var hashesSet=ngram_hashes.toSet
+    val result = nGramHashesFromDatabase.filter(x=>hashesSet contains x.getLong(InverseIndexTable.NGram))
+      //cassandraClient.queryNGramHashesAsArray(ngram_hashes)
+
     val ngramsSetSize = ngram_hashes.toSet.size
 
     //remove all below the first threshold
