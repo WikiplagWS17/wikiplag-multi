@@ -22,14 +22,14 @@ class WikiExcerptBuilder(cassandraClient: CassandraClient) {
     plagiarismCandidates.toSeq.sortWith(_._1.start < _._1.start).zipWithIndex.map(x => {
       val startInInputText = x._1._1.start
       val endInInputText = x._1._1.end
-      val excerts = x._1._2.map(x => {
+      val excerpts = x._1._2.map(x => {
         val document = documentsMap(x._2)
         val excerptTuple = findExactWikipediaExcerpt(x._1, document.text, n)
         val excerpt = buildDisplayExcrept(excerptTuple._1, excerptTuple._2, excerptTuple._3)
         new WikiExcerpt(document.title, document.docId, startInInputText, endInInputText, excerpt)
       })
 
-      new WikiPlagiarism(x._2, excerts)
+      new WikiPlagiarism(x._2, excerpts)
     }).toList
   }
 

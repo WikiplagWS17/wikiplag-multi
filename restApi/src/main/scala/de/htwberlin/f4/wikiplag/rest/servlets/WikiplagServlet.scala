@@ -80,9 +80,9 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
       val jValue = parse(jsonString)
       val textObject = jValue.extract[Text]
       val plagiarism = plagiarismFinder.findPlagiarisms(textObject.text, new HyperParameters())
-      val plagiarismExcrepts = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(plagiarism,N_CHARS_BEFORE_AND_AFTER )
+      val plagiarismExcerpts = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(plagiarism,N_CHARS_BEFORE_AND_AFTER )
 
-      val result  = RestApiPostResponseModel(plagiarismExcrepts)
+      val result  = RestApiPostResponseModel(plagiarismExcerpts)
       result.InitTaggedInputTextFromRawText(textObject.text)
 
       // for testing webapp
