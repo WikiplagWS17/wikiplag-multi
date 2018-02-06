@@ -1,9 +1,8 @@
 package de.htwberlin.f4.wikiplag.plagiarism.models
 
-/**
-  * Represents one potential plagiarism
+/** Represents one potential plagiarism.
   *
-  * @param positon the text position of the plagiarism
+  * @param positon the position of the plagiarism in the wikipedia article.
   * @param docId   the docId id
   */
 class Match(val positon: TextPosition, val docId: Int) {

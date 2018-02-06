@@ -1,7 +1,8 @@
 package de.htwberlin.f4.wikiplag.rest.servlets
 
 import de.htwberlin.f4.wikiplag.plagiarism.models.HyperParameters
-import de.htwberlin.f4.wikiplag.plagiarism.{PlagiarismFinder, WikiExcerptBuilder}
+import de.htwberlin.f4.wikiplag.plagiarism.PlagiarismFinder
+import de.htwberlin.f4.wikiplag.plagiarism.services.WikiPlagiarismService
 import de.htwberlin.f4.wikiplag.rest.models.{AnalyseBean, Text}
 import de.htwberlin.f4.wikiplag.rest.services.CreateAnalyseBeanService
 import de.htwberlin.f4.wikiplag.utils.CassandraParameters
@@ -106,7 +107,7 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
       //find the plagiarism using the default hyper parameters
       val plagiarisms = plagiarismFinder.findPlagiarisms(textObject.text, new HyperParameters())
       //get the wiki excerpts for the plagiarisms
-      val plagiarismExcerpts = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(plagiarisms, N_CHARS_BEFORE_AND_AFTER_PLAG_MATCH)
+      val plagiarismExcerpts = new WikiPlagiarismService(cassaandraClient).createWikiPlagiarisms(plagiarisms, N_CHARS_BEFORE_AND_AFTER_PLAG_MATCH)
       //add the span tags for the input text
       val result = CreateAnalyseBeanService.createAnalyseBean(plagiarismExcerpts, textObject.text)
       result
