@@ -2,7 +2,8 @@ package de.htwberlin.f4.wikiplag.rest.servlets
 
 import de.htwberlin.f4.wikiplag.plagiarism.models.HyperParameters
 import de.htwberlin.f4.wikiplag.plagiarism.{PlagiarismFinder, WikiExcerptBuilder}
-import de.htwberlin.f4.wikiplag.rest.models.{RestApiPostResponseModel, Text}
+import de.htwberlin.f4.wikiplag.rest.models.{AnalyseBean, Text}
+import de.htwberlin.f4.wikiplag.rest.services.CreateAnalyseBeanService
 import de.htwberlin.f4.wikiplag.utils.CassandraParameters
 import de.htwberlin.f4.wikiplag.utils.database.CassandraClient
 import org.apache.spark.SparkContext
@@ -107,8 +108,7 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
       //get the wiki excerpts for the plagiarisms
       val plagiarismExcerpts = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(plagiarisms, N_CHARS_BEFORE_AND_AFTER_PLAG_MATCH)
       //add the span tags for the input text
-      val result = RestApiPostResponseModel(plagiarismExcerpts)
-      result.InitTaggedInputTextFromRawText(textObject.text)
+      val result = CreateAnalyseBeanService.createAnalyseBean(plagiarismExcerpts, textObject.text)
       result
     } catch {
       case e: org.json4s.MappingException => halt(400, "Malformed JSON")

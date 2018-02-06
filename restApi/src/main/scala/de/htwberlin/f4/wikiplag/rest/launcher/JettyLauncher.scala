@@ -15,13 +15,18 @@ object JettyLauncher {
     */
   val ROOT_PATH: String = "/"
 
+  /**
+    * The default port on which the REST-API will be launced if no port is specified.
+    */
+  val DEFAULT_PORT: Int = 8080
+
   /** The REST-API Application entry point.
     *
     * @param args not used.
     */
   def main(args: Array[String]) {
     //initialize a new server with the given port
-    val port = if (System.getenv("PORT") != null) System.getenv("PORT").toInt else 8080
+    val port = if (System.getenv("PORT") != null) System.getenv("PORT").toInt else DEFAULT_PORT
     val server = new Server(port)
 
     //initialize the context
