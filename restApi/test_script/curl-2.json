@@ -1,0 +1,4 @@
+{
+
+  "text" : "Daniel Stenberg, der Programmierer von cURL, begann 1997 ein Programm zu schreiben,das IRC-Teilnehmern Daten über Wechselkurse zur Verfügung stellen sollte, welche von Webseiten abgerufen werden mussten. Er hat dabei auf das schon vorhandene und sehr verbreitete Open-Source-Tool httpget aufgesetzt. Nach einer Erweiterung um andere Protokolle wurde das Programm am 20. März 1998 als cURL 4 erstmals veröffentlicht. "
+  }
