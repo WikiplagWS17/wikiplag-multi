@@ -23,7 +23,7 @@ instead of
 ```bash
 sbt "project restApi" clean assembly
 ```
-NOTE: if the artifact is going to be deployed on an enviorment which has spark change the following in the build.sbt <code>libraryDependencies ++= sparkDependencies_compile</code> -> <code>libraryDependencies ++= sparkDependencies</code>
+NOTE: If the artifact is going to be deployed on an enviorment which has spark, change the following in the build.sbt: <code>libraryDependencies ++= sparkDependencies_compile</code> -> <code>libraryDependencies ++= sparkDependencies</code>
 ## Run
 ```bash
 java -jar wiki_rest.jar
