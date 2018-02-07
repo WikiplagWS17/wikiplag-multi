@@ -1,19 +1,24 @@
-package de.htwberlin.f4.wikiplag.plagiarism
+package de.htwberlin.f4.wikiplag.plagiarism.services
 
 import de.htwberlin.f4.wikiplag.plagiarism.models.{Match, TextPosition}
 
 import scala.collection.mutable
 
-/** Merges text position which are directly after each other. handles their matches aswell.
+/** Merges candidate plagiarism text position in the input text which are directly following each other
+  * and have plagiarisms from one and the same document.
   */
-object MatchesMerger {
-  def mergeMatches(mathes: Map[TextPosition, List[Match]]): Map[TextPosition, List[Match]] = {
-    if (mathes.isEmpty)
-      return mathes
-
+object PlagiarismMatchesMergeService {
+  /** Merges candidate plagiarism text position in the input text which are directly following each other
+    * and have plagiarisms from one and the same document.
+    *
+    * @param matches the input text plagiarism position to plagiarism map
+    */
+  def mergeMatches(matches: Map[TextPosition, List[Match]]): Map[TextPosition, List[Match]] = {
+    if (matches.isEmpty)
+      return matches
 
     //sorted in ascending order by text position
-    mathes.toSeq.sortBy(x => x._1.start).foldLeft(new mutable.Stack[(TextPosition, List[Match])]) {
+    matches.toSeq.sortBy(x => x._1.start).foldLeft(new mutable.Stack[(TextPosition, List[Match])]) {
       (accumulator, current) => {
 
         if (accumulator.isEmpty)
@@ -43,7 +48,7 @@ object MatchesMerger {
     }.toMap
   }
 
-  def mergeMatchesIfNecessary(matches: List[Match]): (List[Match], Boolean) = {
+  private def mergeMatchesIfNecessary(matches: List[Match]): (List[Match], Boolean) = {
     var mergedAtleastOnce = false
     val mergedMatches = matches.groupBy(m => m.docId).flatMap(m => {
       val positions = m._2.map(x => x.positon)
@@ -61,7 +66,7 @@ object MatchesMerger {
     (mergedMatches, mergedAtleastOnce)
   }
 
-  def mergePositionsNextToEachOther(list: List[TextPosition]): (List[TextPosition], Boolean) = {
+  private def mergePositionsNextToEachOther(list: List[TextPosition]): (List[TextPosition], Boolean) = {
     var mergedAtleastOnce = false
     var merged = list.sortBy(x => x.start).foldLeft(new mutable.Stack[(TextPosition)]) {
       (accumulator, current) => {
