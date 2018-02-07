@@ -171,7 +171,7 @@ class PlagiarismFinder(val cassandraClient: CassandraClient, n: Int = 4) {
     val ngramsSetSize = ngram_hashes.toSet.size
 
     //remove all below the first threshold
-    val candidates = getCandidatesBasedOnThreshold(result, ngramsSetSize, hyperParameters.threshold)
+    val candidates = getCandidatesBasedOnThreshold(result, ngramsSetSize, hyperParameters.HashesInDocumentThreshold)
 
     if (candidates.isEmpty)
     // no candidates, sentence is not a plagiarism, return an empty match
@@ -276,7 +276,7 @@ class PlagiarismFinder(val cassandraClient: CassandraClient, n: Int = 4) {
   private def filterAndBuildMatches(candidatesStack: mutable.Stack[mutable.MutableList[(Long, Int)]],
                                     ngramsSize: Int, docId: Int, hyperParameters: HyperParameters): List[Match] = {
     candidatesStack.filter(entry => {
-      val isAboveThreshold = (entry.size / ngramsSize.toDouble) > hyperParameters.secondaryThreshold
+      val isAboveThreshold = (entry.size / ngramsSize.toDouble) > hyperParameters.HashesInSentenceThreshold
 
       //accumulator_.1- the total distance, ._2 the previous position
       val totalDistance = entry.foldLeft((0, entry.head._2)) {
