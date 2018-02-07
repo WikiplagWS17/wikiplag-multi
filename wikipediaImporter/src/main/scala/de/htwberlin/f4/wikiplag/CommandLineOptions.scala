@@ -9,7 +9,6 @@ import org.apache.commons.cli.{GnuParser, OptionBuilder, OptionGroup, Options}
 object CommandLineOptions {
 
   //throws a parse exception if something goes wrong
-
   def parse(args: Array[String]): (CassandraParameters, Commands.Command, String) = {
     val options = createCLiOptions()
     val commandLine = new GnuParser().parse(options, args)
@@ -29,11 +28,11 @@ object CommandLineOptions {
       return (parameters, Commands.ExtractWikiText, file)
     }
     if (commandLine.hasOption("tokenize-extracted-text")) {
-      return (parameters, Commands.TokenizeWikiText,null)
+      return (parameters, Commands.TokenizeWikiText, null)
     }
     if (commandLine.hasOption("create-inverse-index")) {
       val n = commandLine.getParsedOptionValue("create-inverse-index").asInstanceOf[Number].intValue.toString
-      return (parameters, Commands.BuildInverseIndex,n)
+      return (parameters, Commands.BuildInverseIndex, n)
     }
     throw new IllegalArgumentException("Unknown action. Did you add a new action but forgot to add handling for it here?")
   }
@@ -140,11 +139,14 @@ object CommandLineOptions {
 
     sealed trait Command
 
-    case object BuildInverseIndex extends Command
-
+    /** Represents the command to extract the text from the wikipedia articles. */
     case object ExtractWikiText extends Command
 
+    /** Represents the command to tokenize the already extracted text. */
     case object TokenizeWikiText extends Command
+
+    /** Represents the command to build the inverse index from the tokenized text. */
+    case object BuildInverseIndex extends Command
 
   }
 

@@ -9,10 +9,17 @@ import de.htwberlin.f4.wikiplag.utils.inverseindex.InverseIndexBuilderImpl
 import de.htwberlin.f4.wikiplag.utils.parser.WikiDumpParser
 
 /**
-  * TODO docs
-  **/
+  * The Wikipedia Importer App. Depending on the passed option extracts the text from a wikipedia xml-dump,
+  * tokenizes already processed articles or builds an inverse index from the already tokenized articles.
+  * If you want to start it from the IDE start the SparkAppLauncer in /test instead.
+  */
 object SparkApp {
 
+  /**
+    * Application entry point.
+    *
+    * @param args see [[CommandLineOptions]]
+    */
   def main(args: Array[String]) {
 
     val result = CommandLineOptions.parse(args)
@@ -31,6 +38,7 @@ object SparkApp {
     else if (action == CommandLineOptions.Commands.BuildInverseIndex) {
       createInverseIndexAndStoreInCassandra(Integer.parseInt(actionParameter), cassandraParameters)
     }
+
     else
       throw new IllegalArgumentException("Unknown action: " + action + ". Did you add a new option forget to check it here?")
   }
