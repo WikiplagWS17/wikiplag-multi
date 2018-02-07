@@ -44,10 +44,16 @@ class CassandraClient(sc: SparkContext, cassandraParameters: CassandraParameters
     result
   }
 
+  /**
+    * produces map from the result rows of queryDocIdsTokens()
+    **/
   def queryDocIdsTokensAsMap(docIds: List[Int]): Map[Int, Vector[String]] = {
     queryDocIdsTokens(docIds).map(x => (x.getInt(TokenizedTable.DocId), x.getList[String](TokenizedTable.Tokens))).collect.toMap
   }
-
+  /**
+    * returns cassandra rows matching to provided docId-list from TokenizedTable
+    * rows contain the docId and the tokens of an article
+    **/
   def queryDocIdsTokens(docIds: List[Int]): CassandraTableScanRDD[CassandraRow] = {
     if (docIds == null || docIds.isEmpty)
       throw new IllegalArgumentException("docIds is null or empty")
@@ -56,12 +62,17 @@ class CassandraClient(sc: SparkContext, cassandraParameters: CassandraParameters
     val result = df.select(TokenizedTable.DocId, TokenizedTable.Tokens).where(TokenizedTable.DocId + " in ?", docIds.toSet)
     result
   }
-
+  /**
+    * produces map from the result rows of queryArticles()
+    **/
   def queryArticlesAsMap(docIds: Iterable[Int]): Map[Int, Document] = {
     queryArticles(docIds).map(x => x.getInt(ArticlesTable.DocId) ->
       new Document(x.getInt(ArticlesTable.DocId), x.getString(ArticlesTable.Title), x.getString(ArticlesTable.WikiText))).collect.toMap
   }
-
+  /**
+    * returns cassandra rows matching to provided docId-List from ArticlesTable
+    * rows contain the docId, the original text and the title of an article
+    **/
   def queryArticles(docIds: Iterable[Int]): CassandraTableScanRDD[CassandraRow] = {
     if (docIds == null || docIds.isEmpty)
       throw new IllegalArgumentException("docIds is null or empty.")
