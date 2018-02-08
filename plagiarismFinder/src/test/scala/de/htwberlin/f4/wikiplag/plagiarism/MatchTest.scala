@@ -6,11 +6,6 @@ package de.htwberlin.f4.wikiplag.plagiarism
   *
   **/
 
-import java.lang.Exception
-
-import de.htwberlin.f4.wikiplag.plagiarism.models.HyperParameters
-import org.junit.Test
-import org.scalatest.FunSuite
 import de.htwberlin.f4.wikiplag.plagiarism.models.HyperParameters
 import de.htwberlin.f4.wikiplag.utils.CassandraParameters
 import de.htwberlin.f4.wikiplag.utils.database.CassandraClient
@@ -19,12 +14,6 @@ import junit.framework.Assert._
 import org.apache.spark.SparkContext
 import org.junit.{After, Before, Test}
 import org.scalatest.junit.AssertionsForJUnit
-import org.hamcrest.CoreMatchers
-import org.junit.Assert
-import org.scalactic.Fail
-import jdk.nashorn.internal.ir.annotations.Ignore
-
-import scala.util.control.Exception
 
 
 class MatchTest extends AssertionsForJUnit {
