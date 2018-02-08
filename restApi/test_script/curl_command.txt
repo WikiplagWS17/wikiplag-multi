@@ -1,1 +1,0 @@
-curl -X POST -H "Content-Type: application/json" -H "Accept: text/plain" -d "@file.json" -v "http://localhost:8080/wikiplag/rest/analyse"

@@ -120,10 +120,8 @@ lazy val restApi = (project in file("restApi"))
     commonSettings,
     name := "WikiPlagRestAPI",
     libraryDependencies ++= testDependencies,
-    //TODO @Anton remove spark and cass dependencies if not used by Max
-    libraryDependencies ++=sparkDependencies,
-    //libraryDependencies ++=sparkDependencies_compile,
-    libraryDependencies ++=cassandraDependencies,
+    libraryDependencies ++= sparkDependencies_compile,
+    libraryDependencies ++= cassandraDependencies,
     libraryDependencies ++= Seq(
       "org.scalatra" %% "scalatra" % ScalatraVersion,
       "org.scalatra" %% "scalatra-scalatest" % ScalatraVersion % "test",
@@ -133,15 +131,20 @@ lazy val restApi = (project in file("restApi"))
 
       "javax.servlet" % "javax.servlet-api" % "3.1.0" % "provided",
       "org.scalatra" %% "scalatra-json" % ScalatraVersion,
-      "org.json4s"   %% "json4s-jackson" % "3.5.2",
+       //used for dependecy injection
       "com.sun.jersey" % "jersey-server" % "1.2",
-      //add further required dependeices here
+      //library used for json conversion
+      "org.json4s" %% "json4s-jackson" % "3.5.2"
+      //add further required dependencies here
 
     ),
     assemblyJarName in assembly := "wiki_rest.jar",
     mainClass in assembly := Some("de.htwberlin.f4.wikiplag.rest.launcher.JettyLauncher"),
+
     assemblyMergeStrategy in assembly := {
-      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      //discard all files in meta-inf directories
+      case PathList("META-INF", xs@_*) => MergeStrategy.discard
+      //else if files have the same name (e.g application.config.json) use the first one found in the class path tree
       case x => MergeStrategy.first
     }
 

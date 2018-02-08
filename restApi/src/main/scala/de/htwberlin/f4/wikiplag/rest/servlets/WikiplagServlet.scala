@@ -1,9 +1,10 @@
 package de.htwberlin.f4.wikiplag.rest.servlets
 
 import de.htwberlin.f4.wikiplag.plagiarism.models.HyperParameters
-import de.htwberlin.f4.wikiplag.plagiarism.{PlagiarismFinder, WikiExcerptBuilder}
-import de.htwberlin.f4.wikiplag.rest.Text
-import de.htwberlin.f4.wikiplag.rest.models.RestApiPostResponseModel
+import de.htwberlin.f4.wikiplag.plagiarism.PlagiarismFinder
+import de.htwberlin.f4.wikiplag.plagiarism.services.WikiPlagiarismService
+import de.htwberlin.f4.wikiplag.rest.models.{AnalyseBean, Text}
+import de.htwberlin.f4.wikiplag.rest.services.CreateAnalyseBeanService
 import de.htwberlin.f4.wikiplag.utils.CassandraParameters
 import de.htwberlin.f4.wikiplag.utils.database.CassandraClient
 import org.apache.spark.SparkContext
@@ -11,31 +12,61 @@ import org.json4s.{DefaultFormats, Formats}
 import org.scalatra._
 import org.scalatra.json._
 
+/** The wikiplag servlet. Serves the analyse and documents endpoints.
+  *
+  * The analyse endpoint forwards the passed json object to the analyse algorithm and returns
+  * the matching plagiarisms.
+  *
+  * The documents endpoint returns the text of a wikipedia article with the given id.
+  *
+  * @note the documents endpoint isn't currently used, but is handy to have
+  * @note this servlet uses spark and has only been run in local mode (on one node). If you want to run
+  *       it with the spark2-submit command, remove the .setMaster("local") in the init file and specify
+  *       a spark master on the command line with --master
+  *
+  */
 class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
 
   protected implicit val jsonFormats: Formats = DefaultFormats
 
-  private val separator: String = System.getProperty("file.separator")
+  /** The number of characters which are returned before and after each plagiarism excerpt.
+    * These are not part of the plagiarism itself, but help to grasp the context of the article from which
+    * the potential plagiarism was taken.
+    */
+  private val N_CHARS_BEFORE_AND_AFTER_PLAG_MATCH = 20
 
+  /** The cassandra client. Used to query the database. */
   private var cassaandraClient: CassandraClient = _
 
-  // for testing webapp
-  private var saveJson: RestApiPostResponseModel = _
+  /** The plagiarism finder. Used to check a given text for plagiarisms. */
+  private var plagiarismFinder: PlagiarismFinder = _
 
   override def init(): Unit = {
-    println("in init")
+    println("WikiplagServlet: in init")
 
+    //gets the cassandra parameters from the app.conf file.
+    //for an example app.conf see the /resources/app.conf-sample file
     var cassandraParameter = CassandraParameters.readFromConfigFile("app.conf")
+    //create a spark conf and context from the parameters and set the master to local
+    //setting the master to local is required if the app is started using jetty:start
     var conf = cassandraParameter.toSparkConf("[Wikiplag]REST-API").setMaster("local")
     var sparkContext = new SparkContext(conf)
 
     cassaandraClient = new CassandraClient(sparkContext, cassandraParameter)
+    plagiarismFinder = new PlagiarismFinder(cassaandraClient)
   }
 
-  before() {}
-  /*
-	 * document path
-	 */
+  //called before each response
+  before() {
+    //allow cross-origin requests (CORS) from all sources
+    //for more info about CORS see https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+    response.setHeader("Access-Control-Allow-Origin", "*")
+  }
+  /**
+    * Returns the text of the document with the given id from wikipedia.
+    *
+    * @note the text can contain WIKI-Markdown and HTML tags
+    */
   get("/documents/:id") {
     try {
       contentType = "text/plain"
@@ -54,34 +85,31 @@ class WikiplagServlet extends ScalatraServlet with JacksonJsonSupport {
     }
   }
 
-  /*
-   * for testing webapp
-  */
-  get("/test") {
-    contentType = formats("json")
-     saveJson
-     }
-
-  /*
-  * plagiarism path
-  */
+  /**
+    * Performs a plagiarism analysis on the text in the json payload and return a collection of matches.
+    *
+    * @example POST "http://localhost:8080/wikiplag/rest/analyse"
+    *          ```json
+    *          {
+    *          text="TEXT-TO-CHECK"
+    *          }
+    *          ```
+    * @see the README.md file for a sample of the output format
+    * @see the restApi/test_scripts directory for some sample texts with a curl command to send them to the REST-API
+    */
   post("/analyse") {
-    println("post /wikiplag/analyse")
+    println("WikiplagServlet: post /wikiplag/analyse")
     contentType = formats("json")
     try {
-      // read json input file and convert to Text object
-      val jsonString = request.body
-      val jValue = parse(jsonString)
-      val textObject = jValue.extract[Text]
-      val plagiarism = new PlagiarismFinder(cassaandraClient).findPlagiarisms(textObject.text, new HyperParameters())
-      val plagiarismExcrepts = new WikiExcerptBuilder(cassaandraClient).buildWikiExcerpts(plagiarism, 3)
-
-      val result  = new RestApiPostResponseModel(plagiarismExcrepts)
-      result.InitTaggedInputTextFromRawText(textObject.text)
-
-      // for testing webapp
-      saveJson = result
-
+      // read json input file and converts it to Text object
+      val jsonString = parse(request.body)
+      val textObject = jsonString.extract[Text]
+      //find the plagiarism using the default hyper parameters
+      val plagiarisms = plagiarismFinder.findPlagiarisms(textObject.text, new HyperParameters())
+      //get the wiki excerpts for the plagiarisms
+      val plagiarismExcerpts = new WikiPlagiarismService(cassaandraClient).createWikiPlagiarisms(plagiarisms, N_CHARS_BEFORE_AND_AFTER_PLAG_MATCH)
+      //add the span tags for the input text
+      val result = CreateAnalyseBeanService.createAnalyseBean(plagiarismExcerpts, textObject.text)
       result
     } catch {
       case e: org.json4s.MappingException => halt(400, "Malformed JSON")
