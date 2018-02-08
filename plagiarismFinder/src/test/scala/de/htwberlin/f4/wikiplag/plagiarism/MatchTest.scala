@@ -1,5 +1,13 @@
 package de.htwberlin.f4.wikiplag.plagiarism
 
+/**
+  * @author
+  * Kirill P.
+  *
+  **/
+
+import java.lang.Exception
+
 import de.htwberlin.f4.wikiplag.plagiarism.models.HyperParameters
 import org.junit.Test
 import org.scalatest.FunSuite
@@ -14,6 +22,10 @@ import org.scalatest.junit.AssertionsForJUnit
 import org.hamcrest.CoreMatchers
 import org.junit.Assert
 import org.scalactic.Fail
+import jdk.nashorn.internal.ir.annotations.Ignore
+
+import scala.util.control.Exception
+
 
 class MatchTest extends AssertionsForJUnit {
 
@@ -40,7 +52,10 @@ class MatchTest extends AssertionsForJUnit {
     val matches = finder.findPlagiarisms(input + input2, new HyperParameters())
     matches.foreach(println)
     matches.foreach(x => println("[" + (input + input2).substring(x._1.start, x._1.end) + "] Matches: " + x._2))
-    assert(true)
+    val str2 = matches.toString;
+    if (str2.contains("1993: Goldener Bär der Berliner Filmfestspiele für Das Hochzeitsbankett")) {
+      assert(true)
+    }
   }
 
   @Test def testPlagiarismFinderPartOfSentencePlagiate() {
@@ -53,7 +68,6 @@ class MatchTest extends AssertionsForJUnit {
     assertFalse(str2.contains("Prevailed"))
     assertFalse(str2.contains("principle"))
     assertFalse(str2.contains("zealously"))
-
   }
 
 
@@ -64,7 +78,9 @@ class MatchTest extends AssertionsForJUnit {
     val str1 = matches.foreach(println)
     val str2 = str1.toString
     assertEquals(str2, "()")
-
+    if (str2.contains("Namens offenbar brachte ungewöhnlichen Wächtern")) {
+      assert(false)
+    }
   }
 
   @Test def testPlagiarismFinderSentencePlagiateWithoutStopWords() {
@@ -73,9 +89,10 @@ class MatchTest extends AssertionsForJUnit {
     val matches = finder.findPlagiarisms(input + input2, new HyperParameters())
     val str1 = matches.foreach(println)
     val str2 = str1.toString
-    assertFalse(str2.contains("ыфлвофлв"))
     assertFalse(str2.isEmpty)
-    assert(true)
+    if (str2.contains("der, scandiumgruppe, das, element, ist, ein")) {
+      assert(true)
+    }
   }
 
   @Test def testPlagiarismFinderRawTextPlagiate() {
@@ -87,9 +104,9 @@ class MatchTest extends AssertionsForJUnit {
     assert(true)
     assertTrue(str2.contains("()"))
     assertFalse(str2.isEmpty)
-    //    assertTrue(str2.contains("*start*"))
-    //    assertTrue(str2.contains(""))
-
+    if (str2.contains("natriumdihydrogenphosphat, nah, 2, po, 4, zu, einer")) {
+      assert(true)
+    }
   }
 
   @Test def testPlagiarismFinderRawArticlePlagiate() {
@@ -99,11 +116,51 @@ class MatchTest extends AssertionsForJUnit {
     val matches = finder.findPlagiarisms(input + input2, new HyperParameters())
     val str1 = matches.foreach(println)
     val str2 = str1.toString
-    assert(true)
-    // assert("str2".startsWith("(") && "str2".endsWith(")"))
-    assertFalse(str2.isEmpty)
+    if (str2.startsWith("(") && str2.endsWith(")")) {
+      assert(true)
+    } else if (str2.isEmpty) {
+      assert(false)
+    }
 
   }
 
+  @Test def testPlagiarismFinderArticleNotPlagiate() {
 
+    val input = raw"Braten fragen ers war kinder ins. Dame ja sehr mich ware wahr sa bist. wird immer als entweder Em lehnte halber je gesund. Im lustige anblick zu abwarts ri erstieg verband. Tat neu geschwatzt erkundigte schuchtern frohlicher nachmittag vor flu. Zog nun das verdrossen nachtessen grasgarten geschwatzt nun. Frieden ja bi um beinahe besorgt schritt uberall te. Hast tod nur hut bart dame erst die esse. Dem lustige nun man nachtun den hinuber eleganz gefreut mehrere. Pa dachern horchte gelesen endlich se lauernd es. Auf gepfiffen spazieren wei plaudernd. Herd scho ehe dort sie lauf ihn lag erst ware. Tod loben kommt brief karte hut. Die neuen aus augen jeder sitte. En wenn pa vers grob orte hing um ab. Grundstuck mu verbergend zaunpfahle es drechslers handarbeit. Aus vertreiben ubelnehmen lie wer hinstellte uns sauberlich neidgefuhl. Herein bugeln wo dessen herrje zu um sa drohte jemals. Du pa sehr sich nahm tate. Richtig wo dichten fadelte so da steilen wandern einfand. Gesicht lebhaft en woruber wo ku langsam. Blieb gegen am einer se. Kammertur schneider he um herkommen vorbeugte. Nachher wo geruckt stellte du. Aus brauerei irgendwo vergrast auf verlohnt. Beschlo ku es wendete blickte ab. Arbeit fellen bei kannst fremde winter wollte tag nun tor. Fu en leuchtete du verwegene nachgehen la kindliche zierliche. Pa erschrak hinunter zwischen nirgends zu en ratloses. Die fur herde abend als gehen adieu danke. Grad frau aber bis sei ruth. Langsam wahrend heiland da richten sa bedeckt leuchte wo ja. Ist lohgruben furchtete betrubtes nur sudwesten ausgeruht ausdenken. Ferne namen denen regen lag nie davon naher. Bilderbuch dir erkundigte fluchtigen aus geschwatzt zaunpfahle wie. Das besonderes vertreiben hut grashalden fur aneinander ihr. "
+    val input2 = raw"Lied ri fiel hell dann ubel he mi fu. Ihr gesellen arbeiter vom gekommen lampchen gut. Grund konsistent, aus letzterem Grund aber Vor ubelnehmen gearbeitet sauberlich fur hei grundstuck. Schlupfte uberhaupt musterung das lie gestorben. Grundstuck dammerigen birkendose man sie wie. Gefallt glatter ihn geh ein schlich eigenes. Tag ten ists nur esse auch mirs.       Ab am es angenommen da halboffene uberwunden. Flei habe soll oder das alt. Ehe umwolkt kapelle dir diesmal stiefel bosheit. Argerlich wunderbar hol verstehen nebendran senkrecht sie blo wie. Gebaut wahres madele seines gro vom ihm mutter. Fragen und minute ruhten mussen uhr. Te du um moge leer heut zu. Freute in ja je braves leicht. Dazwischen dammerigen kartoffeln erhaltenen es wasserkrug augenblick um.      Gefallen eigentum schuppen so ei feinheit. Gegen er kinde kenne mu se. Im zu sauber labsal werden en heraus sterne mu. Trostlos der das streckte gefallts ins tag begierig. Gebrauch eleonora horchend gedanken als ich befehlen. Geschirr manchmal an spateren hinunter es sichtbar er ri einander. Herkommen betrubtes einfacher es so am kreiselnd verwegene schnupfen.      Vor tor wohlgefuhl bis begleitete vergnugter. Mu im uberall zu umwolkt so reichen. Lachte ihm sohlen sto nah jedoch sie. Sorglosen bettstatt vorbeugte da um verlangst. Gehe oben ige blo moge. Gerbersteg ige ein weg hereintrat launischen vielleicht getunchten gut erhaltenen. Warm la mein leid aber se wo bist. Zweig viere losen des das wie tut neues komme.      He bangigkeit uberwunden lehrlingen da scherzwort nettigkeit en hoffnungen. Ja fehlen pfeife pa kommen gassen langen regnen. Te vorn halb es ziel lass so. Hinabsah gut wir unbeirrt tadellos talseite schreien wer. Se flanierte in wo rausperte tanzmusik. Alten angst zwirn sa um. Nachsten des hausfrau und nirgends ein her.      Auskleiden weg brotkugeln getunchten dammerigen grundstuck flo gut ten. Kopf auch fand bi en so je seid vorn. Viere blatt ehe guter hut. Ihre ohne noch in lauf mich zu im. Wahrend la in madchen ja so gedacht. Auskleiden man werkstatte das fluchtigen gib ton."
+
+    val matches = finder.findPlagiarisms(input + input2, new HyperParameters())
+    val str1 = matches.foreach(println)
+    val str2 = str1.toString
+    if (str2.isEmpty) {
+      assert(true)
+    }
+  }
+
+  @Test def testPlagiarismFinderSentencePlagiateInSeveralArticlesWithHyperparameters() {
+    val input = raw"Actinium radioaktives chemisches Element dem Elementsymbol Ac der Ordnungszahl 89. Im Periodensystem Elemente steht es in 3.\xa0IUPAC-Gruppe, der Scandiumgruppe. Das Element Metall gehört zur 7.\xa0Periode, d-Block. Es der Namensgeber der Gruppe der Actinoide, der folgenden 14 Elemente. Kommentierte Auswahl zur Geschichte der modernen Logik. 4., gegenüber der 3., erweiterte, durchgesehene Auflage. Akademie-Verlag, Berlin 1986.\n* Wolfgang Detel: Grundkurs Philosophie. Band 1: Logik (= Universal-Bibliothek. Nr. 18468). Reclam, Stuttgart 2007. "
+    val input2 = raw"ES\n: Josef Maria Camenzind (1904–1984), CH\n: Richard Owen Cambridge (1717–1802), GB\n: Andrea Camilleri (* 1925), IT\n: Luís de Camões (1524–1580), PT\n: Paul-Henri Campbell (* 1982), USA/D\n: Thomas Campbell (1774–1844), GB\n: Joachim Heinrich Campe (1746–1818), D\n: Thomas Campion (1567–1620), GB\n: Maximiano Campos (1941–1998), BR\n: Albert Camus (1913–1960), FR\n: Matilde Camus (1919–2012), ES\n: Trudi Canavan (* 1969), AUS\n: Elias Canetti (1905–1994)\n: Veza Canetti (1897–1963), AT\n: Hans Caninenberg (1913–2008), D\n: Friedrich Rudolf Ludwig von Canitz (1654–1699), D\n: Ivan Cankar (1876–1918), SLO\n: Cao Cao (155–220), CN\n: Truman Capote (1924–1984), US\n: Alex Capus (* 1961), D\n\n=== Car–Caz ===\n: Emilio Carballido (1925–2008), MEX\n: Lorenzo Carcaterra (* 1954), US\n: Lara Cardella (* 1969), IT\n: Ernesto Cardenal (* 1925), NIC\n: Marie Cardinal (1928/29–2001), FR\n: Giosuè Carduc"
+    val matches = finder.findPlagiarisms(input + input2, new HyperParameters(maxAverageDistance = 8, minimumSentenceLength = 10, maxDistanceBetweenNgrams = 8))
+    val str1 = matches.foreach(println)
+    val str2 = str1.toString
+
+    if (str2.contains("maximiano, campos, 1941") && str2.contains("akademie, verlag, berlin")) {
+      assert(true)
+    }
+    assertFalse(str2.isEmpty)
+  }
+
+
+  @Test def testPlagiarismFinderSentencePlagiateInOneArticlesWithHyperparameters() {
+    val input = raw"Diana Gabaldon (1952)\n:Hans-Georg Gadamer (1900–2002)\n:Carlo Emilio Gadda (1893–1973),.!?Catharina Regina von Greiffenberg (1633–1694), AT\n:Leo Greiner (1876–1928),.!?Jean Giraud (1938–2012)\n:Jean Giraudoux (1882–1944)\n:Hans Bernd Gisevius"
+    val input2 = raw":Gerald Brosseau Gardner (1884–1964), GB\n:John Gardner (1933–1982)\n:John Edmund Gardner (1926–2007)"
+    val matches = finder.findPlagiarisms(input + input2, new HyperParameters(maxAverageDistance = 4, minimumSentenceLength = 3, maxDistanceBetweenNgrams = 6));
+    val str1 = matches.foreach(println)
+    val str2 = str1.toString
+
+    if (str2.contains("Greiner") && str2.contains("John")) {
+      assert(true)
+    }
+    assertFalse(str2.isEmpty)
+  }
 }
