@@ -2,7 +2,7 @@
 
 Note: required serious computing power.
 
-* parses a given Wikipedia-articles.xml file ([info](https://dumps.wikimedia.org/))
+* parses a given [Wikipedia XML-Dump](https://dumps.wikimedia.org/)
 * stores the Wikipedia articles in a Cassandra database
 * creates an inverse index of n-gram hashes
 
