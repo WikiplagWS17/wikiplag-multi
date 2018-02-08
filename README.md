@@ -1,6 +1,7 @@
 # wikiplag-multi
 
-The Wikiplag project organised as a sbt multi-project project.
+The Wikiplag project organised as an sbt multi-project project.
+This repository containts the "backend" of wikiplag. The webapp is a separate project and can be found [here](https://github.com/WikiplagWS17/webapp).
 
 Wikiplag includes the following suprojects:
 
