@@ -131,6 +131,8 @@ lazy val restApi = (project in file("restApi"))
 
       "javax.servlet" % "javax.servlet-api" % "3.1.0" % "provided",
       "org.scalatra" %% "scalatra-json" % ScalatraVersion,
+       //used for dependecy injection
+      "com.sun.jersey" % "jersey-server" % "1.2",
       //library used for json conversion
       "org.json4s" %% "json4s-jackson" % "3.5.2"
       //add further required dependencies here
